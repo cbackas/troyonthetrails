@@ -13,7 +13,6 @@ use tower_http::services::ServeDir;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-mod home_assistant;
 mod route_handlers;
 
 pub struct AppState {
