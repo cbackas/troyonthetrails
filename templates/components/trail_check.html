@@ -1,8 +1,8 @@
-<h4 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-2xl">Trail Status</h4>
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+<h4 class="text-2xl font-bold tracking-tight sm:text-2xl py-2 text-gray-900 dark:text-slate-50">Trail Status</h4>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 md:gap-4">
     {% if trails.is_empty() %}
         <div class="p-4 bg-white rounded shadow">
-            <p class="text-gray-500">No trails found.</p>
+            <p class="text-slate-500 dark:text-slate-300">No trails found.</p>
         </div>
     {% else %}
         {% for trail in trails %}

@@ -1,7 +1,7 @@
 {% extends "layouts/base.html" %}
 {% block title %}Home{% endblock %}
 {% block content %}
-    <div class="bg-white">
+    <div>
         <div hx-get="/api/troy-check"
              hx-swap="innerHtml"
              hx-trigger="load, every 5s"
