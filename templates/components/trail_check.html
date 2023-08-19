@@ -1,0 +1,66 @@
+<h4 class="ml-2 text-2xl font-bold tracking-tight text-gray-900 sm:text-2xl">Trail Status</h4>
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+    {% if trails.is_empty() %}
+        <div class="p-4 bg-white rounded shadow">
+            <p class="text-gray-500">No trails found.</p>
+        </div>
+    {% else %}
+        {% for trail in trails %}
+            <div class="p-4 bg-white rounded shadow">
+                <div class="flex items-center">
+                    {% match trail.status %}
+                    {% when TrailStatus::Closed %}
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke-width="1.7"
+                         stroke="currentColor"
+                         class="text-red-700 w-[48px] h-[48px]">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                    </svg>
+                    {% when TrailStatus::Caution %}
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke-width="1.7"
+                         stroke="currentColor"
+                         class="text-orange-400 w-[48px] h-[48px]">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                    {% when TrailStatus::Open %}
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke-width="1.7"
+                         stroke="currentColor"
+                         class="text-lime-700 w-[48px] h-[48px]">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                {% else %}
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke-width="1.7"
+                         stroke="currentColor"
+                         class="text-lime-700 w-[48px] h-[48px]">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                {% endmatch %}
+                <div>
+                    <h5 class="ml-2 text-lg font-bold tracking-tight text-gray-900 sm:text-xl">{{ trail.name }}</h5>
+                    {% match trail.status %}
+                    {% when TrailStatus::Closed %}
+                    <p class="ml-2 text-sm text-gray-500">Closed</p>
+                    {% when TrailStatus::Caution %}
+                    <p class="ml-2 text-sm text-gray-500">Open but wet</p>
+                    {% when TrailStatus::Open %}
+                    <p class="ml-2 text-sm text-gray-500">Open!</p>
+                {% else %}
+                    <p class="ml-2 text-sm text-gray-500">{{ trail.status_description }}</p>
+                {% endmatch %}
+            </div>
+        </div>
+    </div>
+{% endfor %}
+{% endif %}
+</div>
