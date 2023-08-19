@@ -60,18 +60,18 @@ async fn main() -> anyhow::Result<()> {
 
     // run it, make sure you handle parsing your environment variables properly!
     // let port = std::env::var("PORT").unwrap().parse::<u16>().unwrap();
+    let host = env::var("HOST")
+        .unwrap_or_else(|_| env::var("FLY_PUBLIC_IP").unwrap_or("localhost".to_string()));
     let port = 8080_u16;
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
 
-    info!("router initialized, now listening on port {}", port);
-
     info!(
-        "Server srarted, access the website via http://localhost:{}",
-        port
+        "Server srarted, access the website via http://{}:{}",
+        host, port
     );
     info!(
-        "Server srarted, sent trail status webhooks to http://localhost:{}{}",
-        port, wh_path
+        "Server srarted, sent trail status webhooks to http://{}:{}{}",
+        host, port, wh_path
     );
 
     axum::Server::bind(&addr)
