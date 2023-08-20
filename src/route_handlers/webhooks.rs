@@ -53,8 +53,8 @@ pub async fn handler(
 async fn send_discord_webhook(content: &str) {
     let webhook_url = match std::env::var("DISCORD_WEBHOOK_URL") {
         Ok(url) => url,
-        Err(e) => {
-            error!("Failed to get Discord webhook URL: {}", e);
+        Err(_) => {
+            debug!("No Discord webhook URL found, skipping");
             return;
         }
     };
