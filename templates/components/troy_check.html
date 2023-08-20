@@ -1,9 +1,49 @@
-<div class="mx-auto max-w-2xl text-center">
-    <h2 class="text-3xl font-bold tracking-tight sm:text-4xl text-gray-900 dark:text-slate-50">
+{% if is_troy_on_the_trails %}
+<div class="relative flex overflow-x-hidden bg-red-500 h-[28px] w-screen">
+    <div class="animate-marquee whitespace-nowrap">
+        <span class="text-xl mx-4">TROY IS ON THE TRAILS</span>
+        <span class="text-xl mx-4">//</span>
+        <span class="text-xl mx-4">TROY IS ON THE TRAILS</span>
+        <span class="text-xl mx-4">//</span>
+        <span class="text-xl mx-4">TROY IS ON THE TRAILS</span>
+        <span class="text-xl mx-4">//</span>
+        <span class="text-xl mx-4">TROY IS ON THE TRAILS</span>
+        <span class="text-xl mx-4">//</span>
+        <span class="text-xl mx-4">TROY IS ON THE TRAILS</span>
+        <span class="text-xl mx-4">//</span>
+        <span class="text-xl mx-4">TROY IS ON THE TRAILS</span>
+        <span class="text-xl mx-4">//</span>
+        <span class="text-xl mx-4">TROY IS ON THE TRAILS</span>
+        <span class="text-xl mx-4">//</span>
+        <span class="text-xl mx-4">TROY IS ON THE TRAILS</span>
+        <span class="text-xl mx-4">//</span>
+    </div>
+    <div class="absolute top-0 animate-marquee2 whitespace-nowrap">
+        <span class="text-xl mx-4">TROY IS ON THE TRAILS</span>
+        <span class="text-xl mx-4">//</span>
+        <span class="text-xl mx-4">TROY IS ON THE TRAILS</span>
+        <span class="text-xl mx-4">//</span>
+        <span class="text-xl mx-4">TROY IS ON THE TRAILS</span>
+        <span class="text-xl mx-4">//</span>
+        <span class="text-xl mx-4">TROY IS ON THE TRAILS</span>
+        <span class="text-xl mx-4">//</span>
+        <span class="text-xl mx-4">TROY IS ON THE TRAILS</span>
+        <span class="text-xl mx-4">//</span>
+        <span class="text-xl mx-4">TROY IS ON THE TRAILS</span>
+        <span class="text-xl mx-4">//</span>
+        <span class="text-xl mx-4">TROY IS ON THE TRAILS</span>
+        <span class="text-xl mx-4">//</span>
+        <span class="text-xl mx-4">TROY IS ON THE TRAILS</span>
+        <span class="text-xl mx-4">//</span>
+    </div>
+</div>
+{% endif %}
+<div class="text-center px-6 my-24 sm:px-6 lg:px-32 xl:px-48">
+    <h2 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-slate-50">
         {% if is_troy_on_the_trails %}
-            Troy is on the trails.
+        Troy is on the trails!
         {% else %}
-            Troy is not currently on the trails.
+        Troy is not currently on the trails.
         {% endif %}
     </h2>
 </div>

@@ -1,15 +1,13 @@
 {% extends "layouts/base.html" %}
 {% block title %}Troy On The Trails{% endblock %}
 {% block content %}
-    <div>
+    <div class="flex flex-col items-center space-y-4">
         <div hx-get="/api/troy-check"
              hx-swap="innerHtml"
-             hx-trigger="load, every 5s"
-             class="mx-6 mt-14 sm:mx-6 lg:mx-8 lg:mt-24"></div>
-        <br />
+             hx-trigger="load, every 15s"></div>
         <div hx-get="/api/trail-check"
              hx-swap="innerHtml"
              hx-trigger="load"
-             class="mx-6 my-14 md:mx-32 md:my-10 lg:mx-32 xl:mx-48"></div>
+             class="md:max-w-6xl max-w-[90%] py-6 md:py-14"></div>
     </div>
 {% endblock %}
