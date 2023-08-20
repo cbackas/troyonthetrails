@@ -1,17 +1,39 @@
 use std::sync::Arc;
 
 use axum::extract::State;
-use tokio::sync::Mutex;
+use tokio::{sync::Mutex, time::Instant};
 
 use crate::AppState;
 
 pub async fn handler(
-    State(_state): State<Arc<Mutex<AppState>>>,
+    State(state): State<Arc<Mutex<AppState>>>,
 ) -> impl axum::response::IntoResponse {
-    let template = HomeTemplate {};
+    let mut state = state.lock().await;
+
+    let last_updated = match state.last_updated {
+        None => "never".to_string(),
+        Some(updated) => {
+            let elapsed = updated.elapsed();
+
+            // if its been more than 4 hours then troy problably isn't on the trails
+            if elapsed.as_secs() > 14400 {
+                state.is_troy_on_the_trails = false;
+                state.last_updated = Some(Instant::now());
+            }
+
+            let elapsed = humantime::format_duration(elapsed).to_string();
+            let elapsed: Vec<&str> = elapsed.split_whitespace().collect();
+            let elapsed = elapsed[..elapsed.len() - 3].join(" ");
+            format!("{} ago", elapsed.to_string())
+        }
+    };
+
+    let template = HomeTemplate { last_updated };
     super::html_template::HtmlTemplate(template)
 }
 
 #[derive(askama::Template)]
 #[template(path = "pages/home.html")]
-struct HomeTemplate {}
+struct HomeTemplate {
+    last_updated: String,
+}

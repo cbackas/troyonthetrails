@@ -8,7 +8,7 @@ use axum::{
     Router,
 };
 use sha2::{Digest, Sha256};
-use tokio::sync::Mutex;
+use tokio::{sync::Mutex, time::Instant};
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -17,6 +17,7 @@ mod route_handlers;
 
 pub struct AppState {
     is_troy_on_the_trails: bool,
+    last_updated: Option<Instant>,
 }
 
 #[tokio::main]
@@ -35,6 +36,7 @@ async fn main() -> anyhow::Result<()> {
 
     let app_state = Arc::new(Mutex::new(AppState {
         is_troy_on_the_trails: false,
+        last_updated: None
     }));
 
     info!("initializing router");

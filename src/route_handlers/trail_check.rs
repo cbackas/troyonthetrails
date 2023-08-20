@@ -11,6 +11,7 @@ pub enum TrailStatus {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 struct TrailSystem {
     id: u64,
     status: TrailStatus,
