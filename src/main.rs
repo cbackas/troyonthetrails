@@ -2,14 +2,14 @@ use std::{env, sync::Arc};
 
 use dotenv::dotenv;
 
-use anyhow::{Context, Error, Ok};
+use anyhow::{Context, Ok};
 use axum::{
     routing::{get, post},
     Router,
 };
 use sha2::{Digest, Sha256};
 use tokio::sync::Mutex;
-use tower_http::services::ServeDir;
+use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -42,6 +42,8 @@ async fn main() -> anyhow::Result<()> {
     let wh_path = format!("/wh/trail-event/{:#}", get_ws_route()?);
     let assets_path = std::env::current_dir()?;
     let assets_path = format!("{}/assets", assets_path.to_str().unwrap());
+    let favicon_path = format!("{}/favicon.ico", assets_path);
+    let manifest_path = format!("{}/site.webmanifest", assets_path);
     let app = Router::new()
         .route("/", get(route_handlers::home::handler))
         .route(
@@ -55,6 +57,8 @@ async fn main() -> anyhow::Result<()> {
                 .route("/troy-check", get(route_handlers::troy_check::handler)),
         )
         .nest_service("/assets", ServeDir::new(assets_path))
+        .nest_service("/favicon.ico", ServeFile::new(favicon_path))
+        .nest_service("/site.webmanifest", ServeFile::new(manifest_path))
         .with_state(app_state);
 
     // run it, make sure you handle parsing your environment variables properly!
