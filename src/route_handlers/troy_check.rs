@@ -9,6 +9,7 @@ pub async fn handler(
     State(state): State<Arc<Mutex<AppState>>>,
 ) -> impl axum::response::IntoResponse {
     let state = state.lock().await;
+
     let template = TrailCheckTemplate {
         is_troy_on_the_trails: state.is_troy_on_the_trails,
     };
