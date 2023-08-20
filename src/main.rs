@@ -2,7 +2,7 @@ use std::{env, sync::Arc};
 
 use dotenv::dotenv;
 
-use anyhow::{Context, Ok};
+use anyhow::Context;
 use axum::{
     routing::{get, post},
     Router,
@@ -24,10 +24,19 @@ pub struct AppState {
 async fn main() -> anyhow::Result<()> {
     dotenv().ok();
 
+    let log_level = match std::env::var("LOG_LEVEL") {
+        Ok(level) => match level.as_str() {
+            "trace" | "debug" | "info" | "warn" | "error" => level,
+            _ => "info".to_string(),
+        },
+        Err(_) => "info".to_string(),
+    };
+    let tracing_filter = format!("troyonthetrails={}", log_level);
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "troyonthetrails=debug".into()),
+                .unwrap_or_else(|_| tracing_filter.into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -36,7 +45,7 @@ async fn main() -> anyhow::Result<()> {
 
     let app_state = Arc::new(Mutex::new(AppState {
         is_troy_on_the_trails: false,
-        last_updated: None
+        last_updated: None,
     }));
 
     info!("initializing router");
@@ -83,7 +92,8 @@ async fn main() -> anyhow::Result<()> {
         .serve(app.into_make_service())
         .await
         .context("error while starting API server")?;
-    Ok(())
+
+    anyhow::Ok(())
 }
 
 fn get_ws_route() -> anyhow::Result<String> {
@@ -102,5 +112,5 @@ fn get_ws_route() -> anyhow::Result<String> {
     let hash_str = format!("{:x}", result);
     let short_hash = hash_str[0..32].to_string();
 
-    Ok(short_hash)
+    anyhow::Ok(short_hash)
 }
