@@ -1,4 +1,4 @@
-default: tailwind-generate-watch watch
+default: watch
 
 tailwind-generate:
     npx tailwindcss -i ./styles/tailwind.css -o ./assets/main.css
@@ -13,3 +13,6 @@ run:
 
 watch:
     cargo watch -s 'just tailwind-generate && just run'
+
+deploy:
+    flyctl deploy
