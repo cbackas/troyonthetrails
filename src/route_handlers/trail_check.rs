@@ -1,6 +1,6 @@
 use anyhow::Context;
 use serde::Deserialize;
-use tracing::log::error;
+use tracing::log::{debug, error};
 
 #[derive(Debug, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
@@ -64,8 +64,10 @@ async fn get_trail_html() -> anyhow::Result<String> {
 
     let resp = reqwest::get(url)
         .await
-        .context("Failed to get HTML from coramtb.org/trails")?;
+        .context("Failed to get HTML from data source")?;
     let html = resp.text().await.context("Couldn't find html body")?;
+
+    debug!("Fetched trail data from data source");
 
     Ok(html)
 }
@@ -86,7 +88,7 @@ fn extract_trail_data(html: String) -> anyhow::Result<Vec<TrailSystem>> {
     let json = &html[start..end];
 
     let trail_systems: Vec<TrailSystem> =
-        serde_json::from_str(json).context("Failed to parse JSON from coramtb.org/trails")?;
+        serde_json::from_str(json).context("Failed to parse trail data json")?;
 
     Ok(trail_systems)
 }
