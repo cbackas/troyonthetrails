@@ -16,3 +16,9 @@ watch:
 
 deploy:
     flyctl deploy
+
+stop-app:
+    flyctl scale count 0 -a troyonthetrails
+
+start-app:
+    flyctl scale count 1 -a troyonthetrails
