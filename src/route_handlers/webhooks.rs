@@ -45,7 +45,7 @@ pub async fn handler(
     }
 
     state.is_troy_on_the_trails = payload.on_the_trail;
-    state.last_updated = Some(Instant::now());
+    state.troy_status_last_updated = Some(Instant::now());
 
     axum::http::status::StatusCode::OK
 }
