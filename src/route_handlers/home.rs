@@ -10,7 +10,7 @@ pub async fn handler(
 ) -> impl axum::response::IntoResponse {
     let mut state = state.lock().await;
 
-    let last_updated = match state.last_updated {
+    let last_updated = match state.troy_status_last_updated {
         None => "never".to_string(),
         Some(updated) => {
             let elapsed = updated.elapsed();
@@ -18,7 +18,7 @@ pub async fn handler(
             // if its been more than 4 hours then troy problably isn't on the trails
             if elapsed.as_secs() > 14400 {
                 state.is_troy_on_the_trails = false;
-                state.last_updated = Some(Instant::now());
+                state.troy_status_last_updated = Some(Instant::now());
             }
 
             let elapsed = humantime::format_duration(elapsed).to_string();
