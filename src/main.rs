@@ -18,6 +18,8 @@ mod route_handlers;
 pub struct AppState {
     is_troy_on_the_trails: bool,
     troy_status_last_updated: Option<Instant>,
+    trail_data_last_updated: Option<Instant>,
+    trail_data: Vec<route_handlers::trail_check::TrailSystem>,
 }
 
 #[tokio::main]
@@ -46,6 +48,8 @@ async fn main() -> anyhow::Result<()> {
     let app_state = Arc::new(Mutex::new(AppState {
         is_troy_on_the_trails: false,
         troy_status_last_updated: None,
+        trail_data_last_updated: None,
+        trail_data: vec![],
     }));
 
     info!("initializing router");

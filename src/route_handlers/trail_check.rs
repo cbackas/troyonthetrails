@@ -1,6 +1,12 @@
+use std::sync::Arc;
+
 use anyhow::Context;
+use axum::extract::State;
 use serde::Deserialize;
+use tokio::sync::Mutex;
 use tracing::log::{debug, error};
+
+use crate::AppState;
 
 #[derive(Debug, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
@@ -12,7 +18,7 @@ pub enum TrailStatus {
 
 #[derive(Debug, Deserialize, Clone)]
 #[allow(dead_code)]
-struct TrailSystem {
+pub struct TrailSystem {
     id: u64,
     status: TrailStatus,
     name: String,
@@ -30,7 +36,23 @@ struct TrailSystem {
     directions_url: String,
 }
 
-pub async fn handler() -> impl axum::response::IntoResponse {
+pub async fn handler(
+    State(state): State<Arc<Mutex<AppState>>>,
+) -> impl axum::response::IntoResponse {
+    {
+        let state = state.lock().await;
+        if let Some(last_updated) = state.trail_data_last_updated {
+            // if the trail data was updated less than 5 minutes ago, just use that
+            if last_updated.elapsed().as_secs() < 300 {
+                debug!("Using cached trail data");
+                let template = TrailCheckTemplate {
+                    trails: state.trail_data.clone(),
+                };
+                return super::html_template::HtmlTemplate(template);
+            }
+        }
+    }
+
     let trail_data: Vec<TrailSystem> = match get_trail_html().await {
         Ok(html) => match extract_trail_data(html) {
             Ok(data) => data,
@@ -46,6 +68,12 @@ pub async fn handler() -> impl axum::response::IntoResponse {
     };
 
     let trail_data = sort_trail_data(trail_data);
+    // update the cached trail data
+    {
+        let mut state = state.lock().await;
+        state.trail_data = trail_data.clone();
+        state.trail_data_last_updated = Some(tokio::time::Instant::now());
+    }
 
     let template = TrailCheckTemplate { trails: trail_data };
 
