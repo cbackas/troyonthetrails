@@ -24,7 +24,7 @@ pub async fn handler(
             let elapsed = humantime::format_duration(elapsed).to_string();
             let elapsed: Vec<&str> = elapsed.split_whitespace().collect();
             let elapsed = elapsed[..elapsed.len() - 3].join(" ");
-            format!("{} ago", elapsed.to_string())
+            format!("{} ago", elapsed)
         }
     };
 
