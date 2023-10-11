@@ -11,7 +11,7 @@ WORKDIR /app
 ADD ./package.json /app/package.json
 ADD ./package-lock.json /app/package-lock.json
 RUN npm ci
-ADD ./styles /app/stytes
+ADD ./styles /app/styles
 ADD ./templates /app/templates
 RUN npx tailwindcss -i ./styles/tailwind.css -o ./assets/main.css
 
