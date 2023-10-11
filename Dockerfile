@@ -13,6 +13,7 @@ ADD ./package-lock.json /app/package-lock.json
 RUN npm ci
 ADD ./styles /app/styles
 ADD ./templates /app/templates
+ADD ./tailwind.config.cjs /app/tailwind.config.cjs
 RUN npx tailwindcss -i ./styles/tailwind.css -o ./assets/main.css
 
 FROM rust:slim-bookworm as runtime
