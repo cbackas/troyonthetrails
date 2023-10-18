@@ -15,15 +15,21 @@ pub struct TokenData {
     pub refresh_token: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Athlete {
+    pub id: u64,
+    #[serde(flatten)]
+    other: serde_json::Value, // This will capture all other fields within 'athlete' as a JSON value.
+}
+
+#[derive(Deserialize, Debug, Clone)]
 pub struct StravaTokenResponse {
     pub token_type: String,
     pub expires_at: u64,
     pub expires_in: u64,
     pub refresh_token: String,
     pub access_token: String,
-    #[serde(skip_deserializing)]
-    pub athlete: (),
+    pub athlete: Option<Athlete>,
 }
 
 fn file_path() -> PathBuf {
@@ -81,6 +87,18 @@ pub async fn get_token_from_code(code: String) -> anyhow::Result<TokenData> {
         let strava_data = resp.text().await;
         let strava_data: StravaTokenResponse =
             serde_json::from_str(&strava_data.unwrap()).context("Failed to deserialize JSON")?;
+
+        // if strava_data has an athlete then compare the id to the one in the env var
+        if let Some(athlete) = strava_data.clone().athlete {
+            let strava_user_id = std::env::var("STRAVA_USER_ID")
+                .context("STRAVA_USER_ID environment variable not found")?;
+            if athlete.id.to_string() != strava_user_id {
+                return Err(anyhow::anyhow!(
+                    "Successfully authenticated Strava user but the user id does not match the defined STRAVA_USER_ID"
+                ));
+            }
+        }
+
         let strava_data = strava_data_to_token_data(strava_data);
 
         let write_file = write_token_data_to_file(&strava_data).await;
@@ -107,12 +125,12 @@ pub async fn get_token_from_refresh(refresh_token: String) -> anyhow::Result<Tok
     let client_secret = std::env::var("STRAVA_CLIENT_SECRET")
         .context("STRAVA_CLIENT_SECRET environment variable not found")?;
 
-    debug!("Fetching new strava token using OAuth flow");
+    debug!("Fetching new strava token using refresh token");
 
     let client = reqwest::Client::new();
     let resp = client
         .post("https://www.strava.com/oauth/token")
-        .json(&[
+        .query(&[
             ("client_id", client_id),
             ("client_secret", client_secret),
             ("refresh_token", refresh_token),
