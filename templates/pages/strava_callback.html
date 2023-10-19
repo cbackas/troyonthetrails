@@ -1,0 +1,13 @@
+{% extends "layouts/base.html" %}
+{% block title %}Troy on the Trails{% endblock %}
+{% block head %}
+    {% if delayed_redirect %}<meta http-equiv="refresh" content="5;url=/" />{% endif %}
+{% endblock %}
+{% block content %}
+    <div class="flex flex-col items-center space-y-4">
+        <div class="text-center px-6 my-24 sm:px-6 lg:px-32 xl:px-48">
+            <h2 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-slate-50">{{ message }}</h2>
+            <h4 class="text-xl tracking-tight text-gray-900 dark:text-slate-50">{{ detail }}</h4>
+        </div>
+    </div>
+{% endblock %}

@@ -68,10 +68,12 @@ pub async fn handler(app_state: State<Arc<Mutex<AppState>>>) -> impl IntoRespons
     };
 
     super::html_template::HtmlTemplate(StravaDataTemplate {
-        total_rides: strava_data.all_ride_totals.count,
-        total_distance: strava_data.all_ride_totals.distance / 1000.0,
-        total_elevation_gain: strava_data.all_ride_totals.elevation_gain,
-        longest_ride: strava_data.biggest_ride_distance / 1000.0,
+        total_rides: format_thousands(strava_data.all_ride_totals.count as f64),
+        total_distance: format_thousands((strava_data.all_ride_totals.distance / 1609.0).round()),
+        total_elevation_gain: format_thousands(
+            (strava_data.all_ride_totals.elevation_gain * 3.281).round(),
+        ),
+        longest_ride: format_thousands((strava_data.biggest_ride_distance / 1609.0).round()),
     })
     .into_response()
 }
@@ -79,10 +81,10 @@ pub async fn handler(app_state: State<Arc<Mutex<AppState>>>) -> impl IntoRespons
 #[derive(askama::Template)]
 #[template(path = "components/strava_data.html")]
 struct StravaDataTemplate {
-    total_rides: u32,
-    total_distance: f64,
-    total_elevation_gain: f64,
-    longest_ride: f64,
+    total_rides: String,
+    total_distance: String,
+    total_elevation_gain: String,
+    longest_ride: String,
 }
 
 async fn get_strava_data(strava_token: String) -> anyhow::Result<StravaData> {
@@ -114,5 +116,22 @@ async fn get_strava_data(strava_token: String) -> anyhow::Result<StravaData> {
             resp.status(),
             resp.text().await.unwrap_or("Unknown error".to_string())
         ))
+    }
+}
+
+fn format_thousands(num: f64) -> String {
+    let binding = num.to_string();
+    let parts: Vec<&str> = binding.split('.').collect();
+    let mut chars: Vec<char> = parts[0].chars().collect();
+    let mut index = chars.len() as isize - 3;
+    while index > 0 {
+        chars.insert(index as usize, ',');
+        index -= 3;
+    }
+    let integer_part: String = chars.into_iter().collect();
+    if parts.len() > 1 {
+        format!("{}.{}", integer_part, parts[1])
+    } else {
+        integer_part
     }
 }
