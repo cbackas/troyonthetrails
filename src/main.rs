@@ -66,7 +66,7 @@ async fn main() -> anyhow::Result<()> {
 
     info!("initializing router");
 
-    let wh_path = format!("/wh/trail-event/{:#}", get_ws_route()?);
+    let wh_path = format!("/wh/trail-event/{:#}", get_wh_route()?);
     let assets_path = std::env::current_dir()?;
     let assets_path = format!("{}/assets", assets_path.to_str().unwrap());
     let favicon_path = format!("{}/favicon.ico", assets_path);
@@ -116,7 +116,7 @@ async fn main() -> anyhow::Result<()> {
     anyhow::Ok(())
 }
 
-fn get_ws_route() -> anyhow::Result<String> {
+fn get_wh_route() -> anyhow::Result<String> {
     let ws_seed = env::var("WH_SEED").context("Could not find WH_SEED in environment variables")?;
 
     // Create a Sha256 object
