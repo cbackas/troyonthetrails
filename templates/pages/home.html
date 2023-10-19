@@ -5,10 +5,14 @@
         <div hx-get="/api/troy-check"
              hx-swap="innerHtml"
              hx-trigger="load, every 15s"></div>
+        <div hx-get="/api/strava/data"
+             hx-swap="innerHtml"
+             hx-trigger="load"
+             class="sm:max-w-6xl max-w-[90%]"></div>
         <div hx-get="/api/trail-check"
              hx-swap="innerHtml"
              hx-trigger="load"
-             class="md:max-w-6xl max-w-[90%] py-6 md:py-14"></div>
+             class="md:max-w-6xl max-w-[90%] py-6 md:py-6"></div>
     </div>
     <div class="hidden md:block absolute bottom-4 right-4 text-gray-600">Last updated: {{ last_updated }}</div>
 {% endblock %}
