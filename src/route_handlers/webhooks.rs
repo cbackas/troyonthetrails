@@ -59,20 +59,20 @@ async fn send_discord_webhook(content: &str) {
         }
     };
 
+    let host_uri = crate::env_utils::get_host_uri(None);
+    let avatar_url = &format!("{}/assets/android-chrome-192x192.png", host_uri);
+
     let client: WebhookClient = WebhookClient::new(&webhook_url);
 
     match client
         .send(|message| {
             message
                 .username("TOTT")
-                .avatar_url("https://troyonthetrails.com/assets/android-chrome-192x192.png")
+                .avatar_url(avatar_url)
                 .embed(|embed| {
                     embed.title(content).footer(
                         "Powered by troyonthetrails.com",
-                        Some(
-                            "https://troyonthetrails.com/assets/android-chrome-192x192.png"
-                                .to_string(),
-                        ),
+                        Some(avatar_url.to_string()),
                     )
                 })
         })
