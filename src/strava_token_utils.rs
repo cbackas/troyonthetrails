@@ -1,6 +1,5 @@
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
-use serde_json;
 use std::env;
 use std::fs;
 use std::io::{self, ErrorKind};
@@ -39,7 +38,7 @@ fn file_path() -> PathBuf {
 
 pub async fn read_token_data_from_file() -> io::Result<TokenData> {
     let path = file_path();
-    let file_content = fs::read_to_string(&path)?;
+    let file_content = fs::read_to_string(path)?;
     let token_data = serde_json::from_str(&file_content)
         .map_err(|e| io::Error::new(ErrorKind::InvalidData, e))?;
     Ok(token_data)
@@ -49,7 +48,7 @@ pub async fn write_token_data_to_file(token_data: &TokenData) -> io::Result<()> 
     let path = file_path();
     let json_data = serde_json::to_string_pretty(token_data)
         .map_err(|e| io::Error::new(ErrorKind::InvalidData, e))?;
-    fs::write(&path, json_data)?;
+    fs::write(path, json_data)?;
     debug!("Wrote token data to file");
     Ok(())
 }
