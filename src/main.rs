@@ -10,7 +10,7 @@ use axum::{
 use sha2::{Digest, Sha256};
 use tokio::{sync::Mutex, time::Instant};
 use tower_http::services::{ServeDir, ServeFile};
-use tracing::{error, info};
+use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod env_utils;
