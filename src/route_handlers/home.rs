@@ -5,10 +5,8 @@ use tokio::{sync::Mutex, time::Instant};
 
 use crate::AppState;
 
-pub async fn handler(
-    State(state): State<Arc<Mutex<AppState>>>,
-) -> impl axum::response::IntoResponse {
-    let mut state = state.lock().await;
+pub async fn handler(app_state: State<Arc<Mutex<AppState>>>) -> impl axum::response::IntoResponse {
+    let mut state = app_state.lock().await;
 
     let last_updated = match state.troy_status_last_updated {
         None => "never".to_string(),
@@ -28,7 +26,10 @@ pub async fn handler(
         }
     };
 
-    let template = HomeTemplate { last_updated };
+    let template = HomeTemplate {
+        last_updated,
+        has_strava_token: state.strava_token.is_some(),
+    };
     super::html_template::HtmlTemplate(template)
 }
 
@@ -36,4 +37,5 @@ pub async fn handler(
 #[template(path = "pages/home.html")]
 struct HomeTemplate {
     last_updated: String,
+    has_strava_token: bool,
 }
