@@ -1,6 +1,8 @@
 use axum::response::IntoResponse;
 use tracing::{debug, error};
 
+use crate::env_utils::get_host_uri;
+
 pub async fn handler() -> impl IntoResponse {
     let client_id = match std::env::var("STRAVA_CLIENT_ID") {
         Ok(id) => id,
@@ -11,10 +13,7 @@ pub async fn handler() -> impl IntoResponse {
     };
 
     // get teh HOST env var which is probably troyonthetrails.com
-    let host_uri = match std::env::var("HOST") {
-        Ok(host) => format!("https://{}", host),
-        _ => "http://localhost:8080".to_string(),
-    };
+    let host_uri = get_host_uri(None);
     let host_uri = host_uri.as_bytes();
     let host_uri = url::form_urlencoded::byte_serialize(host_uri);
     let host_uri: String = host_uri.collect();

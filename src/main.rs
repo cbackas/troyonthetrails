@@ -10,9 +10,10 @@ use axum::{
 use sha2::{Digest, Sha256};
 use tokio::{sync::Mutex, time::Instant};
 use tower_http::services::{ServeDir, ServeFile};
-use tracing::info;
+use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+mod env_utils;
 mod route_handlers;
 mod strava_token_utils;
 
@@ -97,20 +98,14 @@ async fn main() -> anyhow::Result<()> {
         .nest_service("/site.webmanifest", ServeFile::new(manifest_path))
         .with_state(app_state);
 
-    // run it, make sure you handle parsing your environment variables properly!
-    // let port = std::env::var("PORT").unwrap().parse::<u16>().unwrap();
-    let host = env::var("HOST")
-        .unwrap_or_else(|_| env::var("FLY_PUBLIC_IP").unwrap_or("localhost".to_string()));
-    let port = 8080_u16;
+    let port = crate::env_utils::get_port();
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
+    let host_uri = crate::env_utils::get_host_uri(Some(port));
 
+    info!("Server srarted, access the website via {}", host_uri);
     info!(
-        "Server srarted, access the website via http://{}:{}",
-        host, port
-    );
-    info!(
-        "Server srarted, sent trail status webhooks to http://{}:{}{}",
-        host, port, wh_path
+        "Server srarted, sent trail status webhooks to {}{}",
+        host_uri, wh_path
     );
 
     axum::Server::bind(&addr)
