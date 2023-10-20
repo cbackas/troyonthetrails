@@ -15,6 +15,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod env_utils;
 mod route_handlers;
+mod strava_data;
 mod strava_token_utils;
 
 pub struct AppState {
