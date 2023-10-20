@@ -1,13 +1,9 @@
-use std::sync::Arc;
-
-use axum::extract::{Query, State};
+use axum::extract::Query;
 use axum::response::IntoResponse;
 use serde::Deserialize;
-use tokio::sync::Mutex;
 use tracing::{debug, error};
 
-use crate::strava_token_utils::get_token_from_code;
-use crate::AppState;
+use crate::strava_api_service::API_SERVICE;
 
 #[derive(Deserialize)]
 #[serde(untagged)]
@@ -23,10 +19,7 @@ pub enum StravaCallbackParams {
     },
 }
 
-pub async fn handler(
-    parameters: Option<Query<StravaCallbackParams>>,
-    app_state: State<Arc<Mutex<AppState>>>,
-) -> impl IntoResponse {
+pub async fn handler(parameters: Option<Query<StravaCallbackParams>>) -> impl IntoResponse {
     match parameters {
         Some(query) => match query.0 {
             StravaCallbackParams::Error { error, state: _ } => {
@@ -44,11 +37,9 @@ pub async fn handler(
                 scope: _,
                 state: _,
             } => {
-                match get_token_from_code(code.clone()).await {
-                    Ok(token) => {
-                        let mut app_state = app_state.lock().await;
-                        app_state.strava_token = Some(token);
-                    }
+                let mut api_service = API_SERVICE.lock().await;
+                match api_service.get_token_from_code(code.clone()).await {
+                    Ok(()) => {}
                     Err(err) => {
                         error!("Failed to get strava token: {}", err);
                         return super::html_template::HtmlTemplate(StravaCallbackTemplate {

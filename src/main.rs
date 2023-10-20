@@ -15,8 +15,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod env_utils;
 mod route_handlers;
-mod strava_data;
-mod strava_token_utils;
+mod strava_api_service;
 
 pub struct AppState {
     // troy data
@@ -25,8 +24,6 @@ pub struct AppState {
     // trail data
     trail_data_last_updated: Option<Instant>,
     trail_data: Vec<route_handlers::trail_check::TrailSystem>,
-    // stava data
-    strava_token: Option<strava_token_utils::TokenData>,
 }
 
 #[tokio::main]
@@ -52,17 +49,11 @@ async fn main() -> anyhow::Result<()> {
 
     info!("initializing app state");
 
-    let strava_token = match crate::strava_token_utils::read_token_data_from_file().await {
-        Ok(token) => Some(token),
-        Err(_) => None,
-    };
-
     let app_state = Arc::new(Mutex::new(AppState {
         is_troy_on_the_trails: false,
         troy_status_last_updated: None,
         trail_data_last_updated: None,
         trail_data: vec![],
-        strava_token,
     }));
 
     info!("initializing router");

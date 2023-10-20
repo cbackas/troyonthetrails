@@ -34,13 +34,8 @@ pub async fn handler(
             current_status, new_status
         );
 
-        let content = format!(
-            "Troy is {} on the trails!",
-            if new_status { "now" } else { "no longer" }
-        );
-
         tokio::spawn(async move {
-            send_discord_webhook(&content).await;
+            send_discord_webhook(new_status).await;
         });
     }
 
@@ -50,7 +45,13 @@ pub async fn handler(
     axum::http::status::StatusCode::OK
 }
 
-async fn send_discord_webhook(content: &str) {
+async fn send_discord_webhook(is_on_the_trails: bool) {
+    let content = if is_on_the_trails {
+        "Troy is on the trails!"
+    } else {
+        "Troy is no longer on the trails!"
+    };
+
     let webhook_url = match std::env::var("DISCORD_WEBHOOK_URL") {
         Ok(url) => url,
         Err(_) => {

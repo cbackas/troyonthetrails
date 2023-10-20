@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::extract::State;
 use tokio::{sync::Mutex, time::Instant};
 
-use crate::AppState;
+use crate::{strava_api_service::API_SERVICE, AppState};
 
 pub async fn handler(app_state: State<Arc<Mutex<AppState>>>) -> impl axum::response::IntoResponse {
     let mut state = app_state.lock().await;
@@ -26,9 +26,12 @@ pub async fn handler(app_state: State<Arc<Mutex<AppState>>>) -> impl axum::respo
         }
     };
 
+    let api_service = API_SERVICE.lock().await;
+    let has_strava_token = api_service.token_data.is_some();
+
     let template = HomeTemplate {
         last_updated,
-        has_strava_token: state.strava_token.is_some(),
+        has_strava_token,
     };
     super::html_template::HtmlTemplate(template)
 }

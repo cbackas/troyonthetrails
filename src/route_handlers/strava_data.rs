@@ -1,38 +1,12 @@
-use std::sync::Arc;
-
-use axum::extract::State;
 use axum::response::IntoResponse;
-use tokio::sync::Mutex;
 use tracing::error;
 
-use crate::strava_data::get_athelete_stats;
-use crate::strava_token_utils::{get_token_from_refresh, TokenData};
-use crate::AppState;
+use crate::strava_api_service::API_SERVICE;
 
-pub async fn handler(app_state: State<Arc<Mutex<AppState>>>) -> impl IntoResponse {
-    let mut app_state = app_state.lock().await;
-    let mut strava_token: TokenData = match &app_state.strava_token {
-        Some(token) => token.clone(),
-        None => {
-            return axum::http::status::StatusCode::UNAUTHORIZED.into_response();
-        }
-    };
+pub async fn handler() -> impl IntoResponse {
+    let mut api_service = API_SERVICE.lock().await;
 
-    if strava_token.expires_at < chrono::Utc::now().timestamp() as u64 {
-        strava_token = match get_token_from_refresh(strava_token.refresh_token.clone()).await {
-            Ok(token) => {
-                app_state.strava_token = Some(token.clone());
-                token
-            }
-
-            Err(err) => {
-                error!("Failed to get strava token: {}", err);
-                return axum::http::status::StatusCode::INTERNAL_SERVER_ERROR.into_response();
-            }
-        };
-    }
-
-    let strava_data = match get_athelete_stats(strava_token.access_token.clone()).await {
+    let strava_data = match api_service.get_athelete_stats().await {
         Ok(data) => data,
         Err(err) => {
             error!("Failed to get strava data: {}", err);
