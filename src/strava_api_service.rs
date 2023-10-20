@@ -274,40 +274,38 @@ impl StravaAPIService {
         }
     }
 
-    async fn get_strava_data(&mut self, url: String) -> anyhow::Result<Response> {
-        let mut strava_token = match self.token_data {
-            Some(ref token_data) => token_data,
-            None => {
-                return Err(anyhow::anyhow!(
-                    "No strava token found, please authenticate"
-                ))
-            }
-        };
-        if strava_token.expires_at < chrono::Utc::now().timestamp() as u64 {
-            match self
-                .get_token_from_refresh(strava_token.refresh_token.clone())
-                .await
-            {
-                Ok(()) => {
-                    strava_token = match self.token_data {
-                        Some(ref token_data) => token_data,
-                        None => {
-                            return Err(anyhow::anyhow!(
-                                "No strava token found, please authenticate"
-                            ))
-                        }
-                    };
-                }
+    async fn refresh_strava_token(&mut self) -> anyhow::Result<()> {
+        let refresh_token = self
+            .token_data
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("No strava token found, please authenticate"))?
+            .refresh_token
+            .clone();
 
-                Err(e) => {
-                    return Err(anyhow::anyhow!(
-                        "Failed to refresh strava token: {}",
-                        e.to_string()
-                    ))
-                }
-            };
+        self.get_token_from_refresh(refresh_token)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to refresh strava token: {}", e.to_string()))
+    }
+
+    async fn get_valid_strava_token(&mut self) -> anyhow::Result<TokenData> {
+        if let Some(token_data) = &self.token_data {
+            if token_data.expires_at >= chrono::Utc::now().timestamp() as u64 {
+                return Ok(token_data.clone());
+            }
         }
 
+        self.refresh_strava_token().await?;
+
+        match &self.token_data {
+            Some(token_data) => Ok(token_data.clone()),
+            None => Err(anyhow::anyhow!(
+                "No strava token found, please authenticate"
+            )),
+        }
+    }
+
+    async fn get_strava_data(&mut self, url: String) -> anyhow::Result<Response> {
+        let strava_token = self.get_valid_strava_token().await?;
         let client = reqwest::Client::new();
         client
             .get(url)
