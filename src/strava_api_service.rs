@@ -12,6 +12,8 @@ use serde_json::Value;
 use tokio::sync::Mutex;
 use tracing::debug;
 
+use crate::env_utils;
+
 #[derive(Deserialize, Debug)]
 pub struct StravaTotals {
     pub count: u32,
@@ -134,7 +136,7 @@ lazy_static! {
 
 pub struct StravaAPIService {
     pub token_data: Option<TokenData>,
-    pub strava_user_id: String,
+    pub strava_user_id: Option<String>,
 }
 
 impl StravaAPIService {
@@ -143,9 +145,11 @@ impl StravaAPIService {
             Ok(token_data) => Some(token_data),
             Err(_) => None,
         };
+        let strava_user_id = env_utils::get_strava_user_id();
+
         Self {
             token_data,
-            strava_user_id: std::env::var("STRAVA_USER_ID").unwrap(),
+            strava_user_id,
         }
     }
 
@@ -196,9 +200,15 @@ impl StravaAPIService {
 
             // if strava_data has an athlete then compare the id to the one in the env var
             if let Some(athlete) = strava_data.clone().athlete {
-                let strava_user_id = std::env::var("STRAVA_USER_ID")
-                    .context("STRAVA_USER_ID environment variable not found")?;
-                if athlete.id.to_string() != strava_user_id {
+                let strava_user_id = match self.strava_user_id {
+                    Some(ref strava_user_id) => strava_user_id,
+                    None => {
+                        return Err(anyhow::anyhow!(
+                            "Successfully authenticated Strava user but no STRAVA_USER_ID defined"
+                        ))
+                    }
+                };
+                if athlete.id.to_string() != strava_user_id.to_string() {
                     return Err(anyhow::anyhow!(
                     "Successfully authenticated Strava user but the user id does not match the defined STRAVA_USER_ID"
                 ));
@@ -311,8 +321,14 @@ impl StravaAPIService {
     }
 
     pub async fn get_athelete_stats(&mut self) -> anyhow::Result<StravaData> {
-        let strava_user_id = std::env::var("STRAVA_USER_ID")
-            .context("STRAVA_USER_ID environment variable not found")?;
+        let strava_user_id = match self.strava_user_id {
+            Some(ref strava_user_id) => strava_user_id,
+            None => {
+                return Err(anyhow::anyhow!(
+                    "No strava user id found, please authenticate"
+                ))
+            }
+        };
 
         let resp = self
             .get_strava_data(format!(

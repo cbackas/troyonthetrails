@@ -36,3 +36,10 @@ pub fn get_port() -> u16 {
 
     port
 }
+
+pub fn get_strava_user_id() -> Option<String> {
+    match env::var("STRAVA_USER_ID") {
+        Ok(user_id) => Some(user_id),
+        _ => None,
+    }
+}
