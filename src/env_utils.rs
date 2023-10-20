@@ -3,7 +3,7 @@ use std::env;
 use tracing::error;
 
 pub fn get_host_uri(port: Option<u16>) -> String {
-    let host_uri = match env::var("HOST") {
+    match env::var("HOST") {
         Ok(host) => format!("https://{}", host),
         _ => match env::var("FLY_APP_NAME") {
             Ok(host) => format!("https://{}.fly.dev", host),
@@ -15,8 +15,7 @@ pub fn get_host_uri(port: Option<u16>) -> String {
                 format!("http://localhost:{}", port)
             }
         },
-    };
-    host_uri
+    }
 }
 
 pub fn get_port() -> u16 {
