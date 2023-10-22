@@ -109,13 +109,13 @@ async fn main() -> anyhow::Result<()> {
 }
 
 fn get_wh_route() -> anyhow::Result<String> {
-    let ws_seed = env::var("WH_SEED").context("Could not find WH_SEED in environment variables")?;
+    let wh_seed = env::var("WH_SEED").context("Could not find WH_SEED in environment variables")?;
 
     // Create a Sha256 object
     let mut hasher = Sha256::new();
 
     // Write input message
-    hasher.update(ws_seed);
+    hasher.update(wh_seed);
 
     // Read hash digest and consume hasher
     let result = hasher.finalize();
