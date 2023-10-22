@@ -130,7 +130,11 @@ async fn send_discord_webhook(is_on_the_trails: bool) {
                     &format!("{}mph", &webhook_data.average_speed),
                     true,
                 )
-                .field("Top Speed", &format!("{}mph", &webhook_data.max_speed), true);
+                .field(
+                    "Top Speed",
+                    &format!("{}mph", &webhook_data.max_speed),
+                    true,
+                );
         };
 
         embed
