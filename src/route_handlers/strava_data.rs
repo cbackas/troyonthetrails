@@ -6,7 +6,7 @@ use crate::strava_api_service::API_SERVICE;
 pub async fn handler() -> impl IntoResponse {
     let mut api_service = API_SERVICE.lock().await;
 
-    let strava_data = match api_service.get_athelete_stats().await {
+    let strava_data = match api_service.get_athlete_stats().await {
         Ok(data) => data,
         Err(err) => {
             error!("Failed to get strava data: {}", err);

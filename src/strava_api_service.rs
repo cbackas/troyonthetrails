@@ -319,6 +319,7 @@ impl StravaAPIService {
     }
 
     pub async fn get_athelete_stats(&mut self) -> anyhow::Result<StravaData> {
+    pub async fn get_athlete_stats(&mut self) -> anyhow::Result<StravaData> {
         let strava_user_id = match self.strava_user_id {
             Some(ref strava_user_id) => strava_user_id,
             None => {
