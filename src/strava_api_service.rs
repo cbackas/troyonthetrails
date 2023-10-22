@@ -14,7 +14,7 @@ use tracing::debug;
 
 use crate::env_utils;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct StravaTotals {
     pub count: u32,
     pub distance: f64,
