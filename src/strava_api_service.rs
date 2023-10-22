@@ -52,7 +52,7 @@ pub struct Activity {
     pub distance: f64,
     pub moving_time: i64,
     pub elapsed_time: i64,
-    pub total_elevation_gain: i64,
+    pub total_elevation_gain: f64,
     #[serde(rename = "type")]
     pub type_field: String,
     pub sport_type: String,
@@ -350,7 +350,7 @@ impl StravaAPIService {
         }
     }
 
-    pub async fn get_last_activity(&mut self) -> anyhow::Result<StravaActivities> {
+    pub async fn get_recent_activity(&mut self) -> anyhow::Result<Activity> {
         let resp = self
             .get_strava_data(
                 "https://www.strava.com/api/v3/athlete/activities?per_page=1".to_string(),
@@ -362,7 +362,21 @@ impl StravaAPIService {
 
             let strava_data: StravaActivities =
                 serde_json::from_str(&text).context("Failed to deserialize JSON")?;
-            Ok(strava_data)
+            let activity = match strava_data.sessions.first() {
+                Some(activity) => Ok(activity.clone()),
+                None => Err(anyhow::anyhow!("No activities found")),
+            }?;
+
+            let now = chrono::Utc::now();
+            let last_activity_time = chrono::DateTime::parse_from_rfc3339(&activity.start_date)
+                .unwrap()
+                .with_timezone(&chrono::Utc);
+            let time_since_last_activity = now - last_activity_time;
+            if time_since_last_activity.num_hours() < 4 {
+                Ok(activity)
+            } else {
+                Err(anyhow::anyhow!("No activities found"))
+            }
         } else {
             Err(anyhow::anyhow!(
                 "Received a non-success status code {}: {}",
