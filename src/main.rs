@@ -13,8 +13,9 @@ use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+mod env_utils;
 mod route_handlers;
-mod strava_token_utils;
+mod strava_api_service;
 
 pub struct AppState {
     // troy data
@@ -23,8 +24,6 @@ pub struct AppState {
     // trail data
     trail_data_last_updated: Option<Instant>,
     trail_data: Vec<route_handlers::trail_check::TrailSystem>,
-    // stava data
-    strava_token: Option<strava_token_utils::TokenData>,
 }
 
 #[tokio::main]
@@ -50,22 +49,16 @@ async fn main() -> anyhow::Result<()> {
 
     info!("initializing app state");
 
-    let strava_token = match crate::strava_token_utils::read_token_data_from_file().await {
-        Ok(token) => Some(token),
-        Err(_) => None,
-    };
-
     let app_state = Arc::new(Mutex::new(AppState {
         is_troy_on_the_trails: false,
         troy_status_last_updated: None,
         trail_data_last_updated: None,
         trail_data: vec![],
-        strava_token,
     }));
 
     info!("initializing router");
 
-    let wh_path = format!("/wh/trail-event/{:#}", get_ws_route()?);
+    let wh_path = format!("/wh/trail-event/{:#}", get_wh_route()?);
     let assets_path = std::env::current_dir()?;
     let assets_path = format!("{}/assets", assets_path.to_str().unwrap());
     let favicon_path = format!("{}/favicon.ico", assets_path);
@@ -97,20 +90,14 @@ async fn main() -> anyhow::Result<()> {
         .nest_service("/site.webmanifest", ServeFile::new(manifest_path))
         .with_state(app_state);
 
-    // run it, make sure you handle parsing your environment variables properly!
-    // let port = std::env::var("PORT").unwrap().parse::<u16>().unwrap();
-    let host = env::var("HOST")
-        .unwrap_or_else(|_| env::var("FLY_PUBLIC_IP").unwrap_or("localhost".to_string()));
-    let port = 8080_u16;
+    let port = crate::env_utils::get_port();
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
+    let host_uri = crate::env_utils::get_host_uri(Some(port));
 
+    info!("Server srarted, access the website via {}", host_uri);
     info!(
-        "Server srarted, access the website via http://{}:{}",
-        host, port
-    );
-    info!(
-        "Server srarted, sent trail status webhooks to http://{}:{}{}",
-        host, port, wh_path
+        "Server srarted, sent trail status webhooks to {}{}",
+        host_uri, wh_path
     );
 
     axum::Server::bind(&addr)
@@ -121,14 +108,14 @@ async fn main() -> anyhow::Result<()> {
     anyhow::Ok(())
 }
 
-fn get_ws_route() -> anyhow::Result<String> {
-    let ws_seed = env::var("WH_SEED").context("Could not find WH_SEED in environment variables")?;
+fn get_wh_route() -> anyhow::Result<String> {
+    let wh_seed = env::var("WH_SEED").context("Could not find WH_SEED in environment variables")?;
 
     // Create a Sha256 object
     let mut hasher = Sha256::new();
 
     // Write input message
-    hasher.update(ws_seed);
+    hasher.update(wh_seed);
 
     // Read hash digest and consume hasher
     let result = hasher.finalize();

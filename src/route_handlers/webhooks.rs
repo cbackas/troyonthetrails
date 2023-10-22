@@ -4,9 +4,12 @@ use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 use tokio::{sync::Mutex, time::Instant};
 use tracing::log::{debug, error, info};
-use webhook::client::WebhookClient;
+use webhook::{client::WebhookClient, models::Message};
 
-use crate::AppState;
+use crate::{
+    strava_api_service::{Activity, API_SERVICE},
+    AppState,
+};
 
 #[derive(Debug, Serialize)]
 pub struct WebhookResponse {
@@ -16,6 +19,13 @@ pub struct WebhookResponse {
 #[derive(Deserialize, Debug)]
 pub struct WebhookRequest {
     on_the_trail: bool,
+}
+
+struct WebhookData {
+    distance: f64,
+    total_elevation_gain: f64,
+    average_speed: f64,
+    max_speed: f64,
 }
 
 pub async fn handler(
@@ -34,13 +44,8 @@ pub async fn handler(
             current_status, new_status
         );
 
-        let content = format!(
-            "Troy is {} on the trails!",
-            if new_status { "now" } else { "no longer" }
-        );
-
         tokio::spawn(async move {
-            send_discord_webhook(&content).await;
+            send_discord_webhook(new_status).await;
         });
     }
 
@@ -50,7 +55,49 @@ pub async fn handler(
     axum::http::status::StatusCode::OK
 }
 
-async fn send_discord_webhook(content: &str) {
+async fn send_discord_webhook(is_on_the_trails: bool) {
+    let content = if is_on_the_trails {
+        "Troy is on the trails!"
+    } else {
+        "Troy is no longer on the trails!"
+    };
+
+    let strava_stats: Option<WebhookData> = match is_on_the_trails {
+        false => None,
+        true => {
+            let mut api_service = API_SERVICE.lock().await;
+            let last_activity: Option<Activity> = match api_service.get_recent_activity().await {
+                Ok(activity) => Some(activity),
+                Err(e) => {
+                    error!("Failed to get last activity: {}", e);
+                    None
+                }
+            };
+
+            match last_activity {
+                None => {
+                    error!("No last activity found");
+                    None
+                }
+
+                Some(last_activity) => {
+                    // check if the last activity was within the last 2 hours
+                    let distance: f64 = (last_activity.distance * 0.000621371).round();
+                    let total_elevation_gain: f64 =
+                        (last_activity.total_elevation_gain * 3.28084).round();
+                    let average_speed = (last_activity.average_speed * 2.23694).round();
+                    let max_speed = (last_activity.max_speed * 2.23694).round();
+                    Some(WebhookData {
+                        distance,
+                        total_elevation_gain,
+                        average_speed,
+                        max_speed,
+                    })
+                }
+            }
+        }
+    };
+
     let webhook_url = match std::env::var("DISCORD_WEBHOOK_URL") {
         Ok(url) => url,
         Err(_) => {
@@ -59,26 +106,46 @@ async fn send_discord_webhook(content: &str) {
         }
     };
 
+    let host_uri = crate::env_utils::get_host_uri(None);
+    let avatar_url = &format!("{}/assets/android-chrome-192x192.png", host_uri);
+
+    let message = &mut Message::new();
+    message.username("TOTT").avatar_url(avatar_url);
+    message.embed(|embed| {
+        embed.title(content).footer(
+            "Powered by troyonthetrails.com",
+            Some(avatar_url.to_string()),
+        );
+
+        if let Some(webhook_data) = &strava_stats {
+            embed
+                .field("Distance", &format!("{}mi", &webhook_data.distance), true)
+                .field(
+                    "Elevation Gain",
+                    &format!("{}ft", &webhook_data.total_elevation_gain),
+                    true,
+                )
+                .field(
+                    "Average Speed",
+                    &format!("{}mph", &webhook_data.average_speed),
+                    true,
+                )
+                .field(
+                    "Top Speed",
+                    &format!("{}mph", &webhook_data.max_speed),
+                    true,
+                );
+        };
+
+        embed
+    });
+
     let client: WebhookClient = WebhookClient::new(&webhook_url);
 
-    match client
-        .send(|message| {
-            message
-                .username("TOTT")
-                .avatar_url("https://troyonthetrails.com/assets/android-chrome-192x192.png")
-                .embed(|embed| {
-                    embed.title(content).footer(
-                        "Powered by troyonthetrails.com",
-                        Some(
-                            "https://troyonthetrails.com/assets/android-chrome-192x192.png"
-                                .to_string(),
-                        ),
-                    )
-                })
-        })
-        .await
-    {
-        Ok(_) => debug!("Successfully sent Discord webhook"),
+    match client.send_message(message).await {
+        Ok(_) => {
+            debug!("Successfully sent Discord webhook");
+        }
         Err(e) => {
             error!("Failed to send Discord webhook: {}", e);
         }

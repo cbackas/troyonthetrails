@@ -1,0 +1,44 @@
+use std::env;
+
+use tracing::error;
+
+pub fn get_host_uri(port: Option<u16>) -> String {
+    match env::var("HOST") {
+        Ok(host) => format!("https://{}", host),
+        _ => match env::var("FLY_APP_NAME") {
+            Ok(host) => format!("https://{}.fly.dev", host),
+            _ => {
+                let port = match port {
+                    Some(port) => port,
+                    _ => get_port(),
+                };
+                format!("http://localhost:{}", port)
+            }
+        },
+    }
+}
+
+pub fn get_port() -> u16 {
+    let default_port: u16 = 8080;
+
+    let port = match env::var("PORT") {
+        Ok(port) => port,
+        _ => default_port.to_string(),
+    };
+    let port: u16 = match port.parse::<_>() {
+        Ok(port) => port,
+        _ => {
+            error!("Failed to parse PORT env var, using default");
+            default_port
+        }
+    };
+
+    port
+}
+
+pub fn get_strava_user_id() -> Option<String> {
+    match env::var("STRAVA_USER_ID") {
+        Ok(user_id) => Some(user_id),
+        _ => None,
+    }
+}
