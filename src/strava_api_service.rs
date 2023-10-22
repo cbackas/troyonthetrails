@@ -219,7 +219,7 @@ impl StravaAPIService {
                         ))
                     }
                 };
-                if athlete.id.to_string() != strava_user_id.to_string() {
+                if athlete.id.to_string().as_str() != strava_user_id {
                     return Err(anyhow::anyhow!(
                     "Successfully authenticated Strava user but the user id does not match the defined STRAVA_USER_ID"
                 ));
