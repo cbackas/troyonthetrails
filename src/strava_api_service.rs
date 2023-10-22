@@ -9,7 +9,7 @@ use lazy_static::lazy_static;
 use reqwest::{header, Response};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::sync::Mutex;
+use tokio::{sync::Mutex, time::Instant};
 use tracing::debug;
 
 use crate::env_utils;
@@ -24,7 +24,7 @@ pub struct StravaTotals {
     pub achievement_count: Option<u32>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct StravaData {
     pub biggest_ride_distance: f64,
     pub biggest_climb_elevation_gain: Option<f64>,
@@ -137,6 +137,8 @@ lazy_static! {
 pub struct StravaAPIService {
     pub token_data: Option<TokenData>,
     pub strava_user_id: Option<String>,
+    pub strava_athlete_stats: Option<StravaData>,
+    pub strava_athlete_stats_updated: Option<Instant>,
 }
 
 impl StravaAPIService {
@@ -150,6 +152,8 @@ impl StravaAPIService {
         Self {
             token_data,
             strava_user_id,
+            strava_athlete_stats: None,
+            strava_athlete_stats_updated: None,
         }
     }
 
@@ -318,8 +322,23 @@ impl StravaAPIService {
             .context("Failed to get strava data")
     }
 
-    pub async fn get_athelete_stats(&mut self) -> anyhow::Result<StravaData> {
+    /// Returns the cached athlete stats if they are less 5 minutes old
+    fn get_cached_athlete_stats(&mut self) -> Option<StravaData> {
+        let now = Instant::now();
+        if let Some(strava_athlete_stats_updated) = self.strava_athlete_stats_updated {
+            if now.duration_since(strava_athlete_stats_updated).as_secs() < 60 * 5 {
+                return self.strava_athlete_stats.clone();
+            }
+        }
+        None
+    }
+
     pub async fn get_athlete_stats(&mut self) -> anyhow::Result<StravaData> {
+        if let Some(strava_athlete_stats) = self.get_cached_athlete_stats() {
+            debug!("Using cached athlete stats");
+            return Ok(strava_athlete_stats);
+        }
+
         let strava_user_id = match self.strava_user_id {
             Some(ref strava_user_id) => strava_user_id,
             None => {
@@ -329,6 +348,7 @@ impl StravaAPIService {
             }
         };
 
+        debug!("Fetching new athlete stats");
         let resp = self
             .get_strava_data(format!(
                 "https://www.strava.com/api/v3/athletes/{}/stats",
@@ -341,6 +361,10 @@ impl StravaAPIService {
 
             let strava_data: StravaData =
                 serde_json::from_str(&text).context("Failed to deserialize JSON")?;
+
+            self.strava_athlete_stats = Some(strava_data.clone());
+            self.strava_athlete_stats_updated = Some(Instant::now());
+
             Ok(strava_data)
         } else {
             Err(anyhow::anyhow!(
