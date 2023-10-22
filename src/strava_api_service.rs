@@ -1,7 +1,7 @@
 use std::{
     env, fs,
     io::{self, ErrorKind},
-    path::PathBuf,
+    path::PathBuf, time::Duration,
 };
 
 use anyhow::Context;
@@ -9,7 +9,7 @@ use lazy_static::lazy_static;
 use reqwest::{header, Response};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::{sync::Mutex, time::Instant};
+use tokio::{sync::Mutex, time::{Instant, sleep}};
 use tracing::debug;
 
 use crate::env_utils;
@@ -129,6 +129,9 @@ pub struct StravaTokenResponse {
     pub access_token: String,
     pub athlete: Option<Athlete>,
 }
+
+const MAX_RETRIES: u32 = 5;
+const INITIAL_BACKOFF: Duration = Duration::from_secs(1);
 
 lazy_static! {
     pub static ref API_SERVICE: Mutex<StravaAPIService> = Mutex::new(StravaAPIService::new());
@@ -311,15 +314,27 @@ impl StravaAPIService {
     async fn get_strava_data(&mut self, url: String) -> anyhow::Result<Response> {
         let strava_token = self.get_valid_strava_token().await?;
         let client = reqwest::Client::new();
-        client
-            .get(url)
-            .header(
-                header::AUTHORIZATION,
-                format!("Bearer {}", strava_token.access_token),
-            )
-            .send()
-            .await
-            .context("Failed to get strava data")
+
+        for retry in 0..MAX_RETRIES {
+            let response = client
+                .get(&url)
+                .header(
+                    header::AUTHORIZATION,
+                    format!("Bearer {}", strava_token.access_token),
+                )
+                .send()
+                .await
+                .context("Failed to send request")?;
+
+            if response.status() != reqwest::StatusCode::TOO_MANY_REQUESTS {
+                return Ok(response);
+            }
+
+            let backoff_time = INITIAL_BACKOFF * 2u32.pow(retry);
+            sleep(backoff_time).await;
+        }
+
+        Err(anyhow::anyhow!("Exceeded maximum retries"))
     }
 
     /// Returns the cached athlete stats if they are less 5 minutes old
