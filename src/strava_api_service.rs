@@ -1,7 +1,8 @@
 use std::{
     env, fs,
     io::{self, ErrorKind},
-    path::PathBuf, time::Duration,
+    path::PathBuf,
+    time::Duration,
 };
 
 use anyhow::Context;
@@ -9,7 +10,10 @@ use lazy_static::lazy_static;
 use reqwest::{header, Response};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::{sync::Mutex, time::{Instant, sleep}};
+use tokio::{
+    sync::Mutex,
+    time::{sleep, Instant},
+};
 use tracing::debug;
 
 use crate::env_utils;
