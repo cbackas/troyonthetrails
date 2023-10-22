@@ -138,7 +138,8 @@ async fn send_discord_webhook(is_on_the_trails: bool) {
 
     let client: WebhookClient = WebhookClient::new(&webhook_url);
 
-    match client.send_message(&message).await {
+    let message_result = client.send_message(&message).await;
+    match message_result {
         Ok(_) => {
             debug!("Successfully sent Discord webhook");
         }
