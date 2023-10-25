@@ -44,11 +44,6 @@ pub struct StravaData {
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct StravaActivities {
-    pub sessions: Vec<Activity>,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Activity {
     pub resource_state: i64,
     pub athlete: Athlete,
@@ -60,47 +55,43 @@ pub struct Activity {
     #[serde(rename = "type")]
     pub type_field: String,
     pub sport_type: String,
-    pub workout_type: Value,
+    pub workout_type: Option<i64>,
     pub id: i64,
-    pub external_id: String,
-    pub upload_id: f64,
     pub start_date: String,
     pub start_date_local: String,
     pub timezone: String,
-    pub utc_offset: i64,
-    pub start_latlng: Value,
-    pub end_latlng: Value,
-    pub location_city: Value,
-    pub location_state: Value,
+    pub utc_offset: f64, // This field should be a floating-point type
+    pub start_latlng: Vec<f64>,
+    pub end_latlng: Vec<f64>,
+    pub location_city: Option<String>,
+    pub location_state: Option<String>,
     pub location_country: String,
     pub achievement_count: i64,
     pub kudos_count: i64,
     pub comment_count: i64,
     pub athlete_count: i64,
     pub photo_count: i64,
-    pub map: Map,
+    pub map: Value,
     pub trainer: bool,
     pub commute: bool,
     pub manual: bool,
     pub private: bool,
     pub flagged: bool,
-    pub gear_id: String,
+    pub gear_id: Option<String>,
     pub from_accepted_tag: bool,
     pub average_speed: f64,
     pub max_speed: f64,
-    pub average_cadence: f64,
-    pub average_watts: f64,
-    pub weighted_average_watts: i64,
-    pub kilojoules: f64,
-    pub device_watts: bool,
     pub has_heartrate: bool,
-    pub average_heartrate: f64,
-    pub max_heartrate: i64,
-    pub max_watts: i64,
+    pub heartrate_opt_out: bool,
+    pub display_hide_heartrate_option: bool,
+    pub elev_high: f64,
+    pub elev_low: f64,
+    pub upload_id: i64, // This field should be an integer type
+    pub upload_id_str: String,
+    pub external_id: String,
     pub pr_count: i64,
     pub total_photo_count: i64,
     pub has_kudoed: bool,
-    pub suffer_score: i64,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -108,13 +99,6 @@ pub struct Athlete {
     pub id: u64,
     #[serde(flatten)]
     other: serde_json::Value, // This will capture all other fields within 'athlete' as a JSON value.
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Map {
-    pub id: String,
-    pub summary_polyline: Value,
-    pub resource_state: i64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -404,9 +388,9 @@ impl StravaAPIService {
         if resp.status().is_success() {
             let text = resp.text().await.context("Failed to get strava data")?;
 
-            let strava_data: StravaActivities =
+            let strava_data: Vec<Activity> =
                 serde_json::from_str(&text).context("Failed to deserialize JSON")?;
-            let activity = match strava_data.sessions.first() {
+            let activity = match strava_data.first() {
                 Some(activity) => Ok(activity.clone()),
                 None => Err(anyhow::anyhow!("No activities found")),
             }?;
