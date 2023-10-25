@@ -63,8 +63,8 @@ async fn send_discord_webhook(is_on_the_trails: bool) {
     };
 
     let strava_stats: Option<WebhookData> = match is_on_the_trails {
-        false => None,
-        true => {
+        true => None,
+        false => {
             let mut api_service = API_SERVICE.lock().await;
             let last_activity: Option<Activity> = match api_service.get_recent_activity().await {
                 Ok(activity) => Some(activity),
