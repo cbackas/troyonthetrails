@@ -7,6 +7,7 @@ use tracing::log::{debug, error, info};
 use webhook::{client::WebhookClient, models::Message};
 
 use crate::{
+    data_utils::{meters_to_feet, meters_to_miles, mps_to_miph},
     strava_api_service::{Activity, API_SERVICE},
     AppState,
 };
@@ -81,12 +82,11 @@ async fn send_discord_webhook(is_on_the_trails: bool) {
                 }
 
                 Some(last_activity) => {
-                    // check if the last activity was within the last 2 hours
-                    let distance: f64 = (last_activity.distance * 0.000621371).round();
-                    let total_elevation_gain: f64 =
-                        (last_activity.total_elevation_gain * 3.28084).round();
-                    let average_speed = (last_activity.average_speed * 2.23694).round();
-                    let max_speed = (last_activity.max_speed * 2.23694).round();
+                    let distance = meters_to_miles(last_activity.distance, false);
+                    let total_elevation_gain =
+                        meters_to_feet(last_activity.total_elevation_gain, true);
+                    let average_speed = mps_to_miph(last_activity.average_speed, false);
+                    let max_speed = mps_to_miph(last_activity.max_speed, false);
                     Some(WebhookData {
                         distance,
                         total_elevation_gain,

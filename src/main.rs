@@ -13,6 +13,7 @@ use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+mod data_utils;
 mod env_utils;
 mod route_handlers;
 mod strava_api_service;

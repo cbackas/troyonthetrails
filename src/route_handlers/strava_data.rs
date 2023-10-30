@@ -1,7 +1,10 @@
 use axum::response::IntoResponse;
 use tracing::error;
 
-use crate::strava_api_service::API_SERVICE;
+use crate::{
+    data_utils::{format_thousands, meters_to_feet, meters_to_miles},
+    strava_api_service::API_SERVICE,
+};
 
 pub async fn handler() -> impl IntoResponse {
     let mut api_service = API_SERVICE.lock().await;
@@ -14,13 +17,16 @@ pub async fn handler() -> impl IntoResponse {
         }
     };
 
+    let total_rides = strava_data.all_ride_totals.count as f64;
+    let total_distance = meters_to_miles(strava_data.all_ride_totals.distance, true);
+    let total_elevation_gain = meters_to_feet(strava_data.all_ride_totals.elevation_gain, true);
+    let longest_ride = meters_to_miles(strava_data.biggest_ride_distance, true);
+
     super::html_template::HtmlTemplate(StravaDataTemplate {
-        total_rides: format_thousands(strava_data.all_ride_totals.count as f64),
-        total_distance: format_thousands((strava_data.all_ride_totals.distance / 1609.0).round()),
-        total_elevation_gain: format_thousands(
-            (strava_data.all_ride_totals.elevation_gain * 3.281).round(),
-        ),
-        longest_ride: format_thousands((strava_data.biggest_ride_distance / 1609.0).round()),
+        total_rides: format_thousands(total_rides),
+        total_distance: format_thousands(total_distance),
+        total_elevation_gain: format_thousands(total_elevation_gain),
+        longest_ride: format_thousands(longest_ride),
     })
     .into_response()
 }
@@ -32,21 +38,4 @@ struct StravaDataTemplate {
     total_distance: String,
     total_elevation_gain: String,
     longest_ride: String,
-}
-
-fn format_thousands(num: f64) -> String {
-    let binding = num.to_string();
-    let parts: Vec<&str> = binding.split('.').collect();
-    let mut chars: Vec<char> = parts[0].chars().collect();
-    let mut index = chars.len() as isize - 3;
-    while index > 0 {
-        chars.insert(index as usize, ',');
-        index -= 3;
-    }
-    let integer_part: String = chars.into_iter().collect();
-    if parts.len() > 1 {
-        format!("{}.{}", integer_part, parts[1])
-    } else {
-        integer_part
-    }
 }
