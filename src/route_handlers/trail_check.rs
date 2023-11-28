@@ -14,6 +14,7 @@ pub enum TrailStatus {
     Open,
     Caution,
     Closed,
+    Freeze,
 }
 
 #[derive(Debug, Deserialize, Clone)]
