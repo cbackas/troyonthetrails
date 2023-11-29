@@ -2,19 +2,59 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use axum::extract::State;
-use serde::Deserialize;
+use serde::de::{self, Visitor};
+use serde::{Deserialize, Deserializer};
+use std::fmt;
 use tokio::sync::Mutex;
 use tracing::log::{debug, error};
+use tracing::warn;
 
 use crate::AppState;
 
-#[derive(Debug, Deserialize, PartialEq, Eq, Clone)]
-#[serde(rename_all = "lowercase")]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum TrailStatus {
     Open,
     Caution,
     Closed,
     Freeze,
+    Unknown,
+}
+
+// custom deserializer for TrailStatus
+// basically allows for the Unknown variant to be used as a catchall
+impl<'de> Deserialize<'de> for TrailStatus {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct TrailStatusVisitor;
+
+        impl<'de> Visitor<'de> for TrailStatusVisitor {
+            type Value = TrailStatus;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a valid trail status")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<TrailStatus, E>
+            where
+                E: de::Error,
+            {
+                match value.to_lowercase().as_str() {
+                    "open" => Ok(TrailStatus::Open),
+                    "caution" => Ok(TrailStatus::Caution),
+                    "closed" => Ok(TrailStatus::Closed),
+                    "freeze" => Ok(TrailStatus::Freeze),
+                    _ => {
+                        warn!("Unknown trail status: {}", value);
+                        Ok(TrailStatus::Unknown)
+                    }
+                }
+            }
+        }
+
+        deserializer.deserialize_str(TrailStatusVisitor)
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
