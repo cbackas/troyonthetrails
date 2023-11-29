@@ -57,16 +57,16 @@
                     <h5 class="ml-2 text-lg font-bold tracking-tight text-gray-900 sm:text-xl">{{ trail.name }}</h5>
                     {% match trail.status %}
                     {% when TrailStatus::Closed %}
-                    <p class="ml-2 text-sm text-gray-500">Closed</p>
+                        <p class="ml-2 text-sm text-gray-500">Closed</p>
                     {% when TrailStatus::Caution %}
-                    <p class="ml-2 text-sm text-gray-500">Open but wet</p>
+                        <p class="ml-2 text-sm text-gray-500">Open but wet</p>
                     {% when TrailStatus::Open %}
-                    <p class="ml-2 text-sm text-gray-500">Open!</p>
+                        <p class="ml-2 text-sm text-gray-500">Open!</p>
                     {% when TrailStatus::Freeze %}
-                    <p class="ml-2 text-sm text-gray-500">Frosty</p>
-                {% else %}
-                    <p class="ml-2 text-sm text-gray-500">{{ trail.status_description }}</p>
-                {% endmatch %}
+                        <p class="ml-2 text-sm text-gray-500">Frosty</p>
+                    {% else %}
+                        <p class="ml-2 text-sm text-gray-500">{{ trail.status_description }}</p>
+                    {% endmatch %}
                 </div>
             </div>
         </div>
