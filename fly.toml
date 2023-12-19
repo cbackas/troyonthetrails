@@ -20,3 +20,13 @@ primary_region = "ord"
 [env]
   HOST = "troyonthetrails.com"
   LOG_LEVEL = "debug"
+
+[checks]
+  [checks.name_of_your_http_check]
+    grace_period = "60s"
+    interval = "30s"
+    method = "get"
+    path = "/healthcheck"
+    port = 8080
+    timeout = "10s"
+    type = "http"

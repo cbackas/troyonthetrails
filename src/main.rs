@@ -4,6 +4,7 @@ use dotenv::dotenv;
 
 use anyhow::Context;
 use axum::{
+    http::Response,
     routing::{get, post},
     Router,
 };
@@ -86,6 +87,7 @@ async fn main() -> anyhow::Result<()> {
                         .route("/data", get(route_handlers::strava_data::handler)),
                 ),
         )
+        .route("/healthcheck", get(|| async { "Ok" }))
         .nest_service("/assets", ServeDir::new(assets_path))
         .nest_service("/favicon.ico", ServeFile::new(favicon_path))
         .nest_service("/site.webmanifest", ServeFile::new(manifest_path))
