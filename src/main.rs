@@ -34,7 +34,7 @@ impl Default for AppState {
             is_troy_on_the_trails: false,
             troy_status_last_updated: None,
             trail_data_last_updated: None,
-            trail_data: vec![],
+            trail_data: Vec::new(),
         }
     }
 }
