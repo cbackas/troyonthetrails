@@ -7,8 +7,8 @@ use tracing::log::{debug, error, info};
 use webhook::{client::WebhookClient, models::Message};
 
 use crate::{
-    data_utils::{meters_to_feet, meters_to_miles, mps_to_miph},
     strava_api_service::{Activity, API_SERVICE},
+    utils::{meters_to_feet, meters_to_miles, mps_to_miph},
     AppState,
 };
 
@@ -106,7 +106,7 @@ async fn send_discord_webhook(is_on_the_trails: bool) {
         }
     };
 
-    let host_uri = crate::env_utils::get_host_uri(None);
+    let host_uri = crate::env_utils::get_host_uri();
     let avatar_url = &format!("{}/assets/android-chrome-192x192.png", host_uri);
 
     let message = &mut Message::new();

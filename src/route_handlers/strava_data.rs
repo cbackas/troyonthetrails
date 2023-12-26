@@ -2,8 +2,8 @@ use axum::response::IntoResponse;
 use tracing::error;
 
 use crate::{
-    data_utils::{format_thousands, meters_to_feet, meters_to_miles},
     strava_api_service::API_SERVICE,
+    utils::{format_thousands, meters_to_feet, meters_to_miles},
 };
 
 pub async fn handler() -> impl IntoResponse {
