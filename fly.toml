@@ -19,10 +19,10 @@ primary_region = "ord"
 
 [env]
   HOST = "troyonthetrails.com"
-  LOG_LEVEL = "debug"
+  RUST_LOG = "info"
 
 [checks]
-  [checks.name_of_your_http_check]
+  [checks.health]
     grace_period = "60s"
     interval = "30s"
     method = "get"
