@@ -1,3 +1,5 @@
+use sha2::{Digest, Sha256};
+
 pub fn meters_to_feet(meters: f64, round_to_whole: bool) -> f64 {
     let feet = meters * 3.28084;
     if round_to_whole {
@@ -40,4 +42,10 @@ pub fn format_thousands(num: f64) -> String {
     } else {
         integer_part
     }
+}
+
+pub fn hash_string(string: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(string);
+    format!("{:x}", hasher.finalize())
 }

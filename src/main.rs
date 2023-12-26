@@ -1,18 +1,18 @@
-use std::{env, sync::Arc};
-
-use dotenv::dotenv;
+use std::sync::Arc;
 
 use anyhow::Context;
+use dotenv::dotenv;
+
 use axum::{
-    http::Response,
     routing::{get, post},
     Router,
 };
-use sha2::{Digest, Sha256};
 use tokio::{sync::Mutex, time::Instant};
 use tower_http::services::{ServeDir, ServeFile};
-use tracing::info;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing::{debug, info};
+use tracing_subscriber::{
+    filter::LevelFilter, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
+};
 
 mod env_utils;
 mod route_handlers;
@@ -28,104 +28,115 @@ pub struct AppState {
     trail_data: Vec<route_handlers::trail_check::TrailSystem>,
 }
 
+impl Default for AppState {
+    fn default() -> Self {
+        Self {
+            is_troy_on_the_trails: false,
+            troy_status_last_updated: None,
+            trail_data_last_updated: None,
+            trail_data: vec![],
+        }
+    }
+}
+
+type SharedAppState = Arc<Mutex<AppState>>;
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv().ok();
 
-    let log_level = match std::env::var("LOG_LEVEL") {
-        Ok(level) => match level.as_str() {
-            "trace" | "debug" | "info" | "warn" | "error" => level,
-            _ => "info".to_string(),
-        },
-        Err(_) => "info".to_string(),
-    };
-    let tracing_filter = format!("troyonthetrails={}", log_level);
-
+    let env_filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .from_env_lossy();
     tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_filter.into()),
-        )
+        .with(env_filter)
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    info!("initializing app state");
+    debug!("initializing app state ...");
 
-    let app_state = Arc::new(Mutex::new(AppState {
-        is_troy_on_the_trails: false,
-        troy_status_last_updated: None,
-        trail_data_last_updated: None,
-        trail_data: vec![],
-    }));
+    let port = crate::env_utils::get_port();
+    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
+    let host_uri = crate::env_utils::get_host_uri();
 
-    info!("initializing router");
+    info!("Starting server at host: {}", host_uri);
 
-    let wh_path = format!("/wh/trail-event/{:#}", get_wh_route()?);
-    let assets_path = std::env::current_dir()?;
-    let assets_path = format!("{}/assets", assets_path.to_str().unwrap());
-    let favicon_path = format!("{}/favicon.ico", assets_path);
-    let manifest_path = format!("{}/site.webmanifest", assets_path);
-    let app = Router::new()
+    axum::Server::bind(&addr)
+        .serve(
+            get_main_router()
+                .with_state(SharedAppState::default())
+                .into_make_service(),
+        )
+        .await
+        .context("error while starting API server")?;
+
+    debug!("Server srarted");
+
+    anyhow::Ok(())
+}
+
+/**
+ * main router for the app, defines basic root routes including the webhook event route
+ * also brings together the other routers
+ **/
+fn get_main_router() -> Router<SharedAppState> {
+    debug!("initializing router(s) ...");
+
+    let wh_secret = crate::env_utils::get_webhook_secret();
+    let wh_path = format!("/wh/trail-event/{:#}", wh_secret);
+    info!("Webhook event route: {}", wh_path);
+
+    let services_router = get_services_router();
+    let api_router = get_api_router();
+    let main_router = Router::new()
         .route("/", get(route_handlers::home::handler))
         .route(
             &wh_path,
             post(route_handlers::webhooks::handler).get(route_handlers::webhooks::handler),
         )
-        .nest(
-            "/api",
-            Router::new()
-                .route("/trail-check", get(route_handlers::trail_check::handler))
-                .route("/troy-check", get(route_handlers::troy_check::handler))
-                .nest(
-                    "/strava",
-                    Router::new()
-                        .route(
-                            "/supersecretauthroute",
-                            get(route_handlers::strava_auth::handler),
-                        )
-                        .route("/callback", get(route_handlers::strava_callback::handler))
-                        .route("/data", get(route_handlers::strava_data::handler)),
-                ),
-        )
         .route("/healthcheck", get(|| async { "Ok" }))
-        .nest_service("/assets", ServeDir::new(assets_path))
-        .nest_service("/favicon.ico", ServeFile::new(favicon_path))
-        .nest_service("/site.webmanifest", ServeFile::new(manifest_path))
-        .with_state(app_state);
+        .merge(services_router)
+        .nest("/api", api_router);
 
-    let port = crate::env_utils::get_port();
-    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
-    let host_uri = crate::env_utils::get_host_uri(Some(port));
-
-    info!("Server srarted, access the website via {}", host_uri);
-    info!(
-        "Server srarted, sent trail status webhooks to {}{}",
-        host_uri, wh_path
-    );
-
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .context("error while starting API server")?;
-
-    anyhow::Ok(())
+    main_router
 }
 
-fn get_wh_route() -> anyhow::Result<String> {
-    let wh_seed = env::var("WH_SEED").context("Could not find WH_SEED in environment variables")?;
+/**
+ * router for the static assets and such
+**/
+fn get_services_router() -> Router<SharedAppState> {
+    let assets_path = match std::env::current_dir() {
+        Ok(path) => path,
+        Err(_) => std::path::PathBuf::from("./"),
+    };
 
-    // Create a Sha256 object
-    let mut hasher = Sha256::new();
+    let assets_path = format!("{}/assets", assets_path.to_str().unwrap());
+    let favicon_path = format!("{}/favicon.ico", assets_path);
+    let manifest_path = format!("{}/site.webmanifest", assets_path);
 
-    // Write input message
-    hasher.update(wh_seed);
+    let services = Router::new()
+        .nest_service("/assets", ServeDir::new(assets_path))
+        .nest_service("/favicon.ico", ServeFile::new(favicon_path))
+        .nest_service("/site.webmanifest", ServeFile::new(manifest_path));
 
-    // Read hash digest and consume hasher
-    let result = hasher.finalize();
+    services
+}
 
-    // Convert hash to a hex string and take the first 32 characters
-    let hash_str = format!("{:x}", result);
-    let short_hash = hash_str[0..32].to_string();
-
-    anyhow::Ok(short_hash)
+/**
+ * router for our api routes and the strava setup routes
+ **/
+fn get_api_router() -> Router<SharedAppState> {
+    Router::new()
+        .route("/trail-check", get(route_handlers::trail_check::handler))
+        .route("/troy-check", get(route_handlers::troy_check::handler))
+        .nest(
+            "/strava",
+            Router::new()
+                .route(
+                    "/supersecretauthroute",
+                    get(route_handlers::strava_auth::handler),
+                )
+                .route("/callback", get(route_handlers::strava_callback::handler))
+                .route("/data", get(route_handlers::strava_data::handler)),
+        )
 }

@@ -2,17 +2,15 @@ use std::env;
 
 use tracing::error;
 
-pub fn get_host_uri(port: Option<u16>) -> String {
+use crate::utils::hash_string;
+
+pub fn get_host_uri() -> String {
     match env::var("HOST") {
         Ok(host) => format!("https://{}", host),
         _ => match env::var("FLY_APP_NAME") {
             Ok(host) => format!("https://{}.fly.dev", host),
             _ => {
-                let port = match port {
-                    Some(port) => port,
-                    _ => get_port(),
-                };
-                format!("http://localhost:{}", port)
+                format!("http://localhost:{}", get_port())
             }
         },
     }
@@ -34,6 +32,15 @@ pub fn get_port() -> u16 {
     };
 
     port
+}
+
+pub fn get_webhook_secret() -> String {
+    let wh_seed = match env::var("WH_SEED") {
+        Ok(wh_seed) => wh_seed,
+        _ => "defaultwebhookseed".to_string(),
+    };
+
+    hash_string(&wh_seed)[0..32].to_string()
 }
 
 pub fn get_strava_user_id() -> Option<String> {
