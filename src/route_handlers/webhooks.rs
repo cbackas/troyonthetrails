@@ -7,8 +7,8 @@ use tracing::log::{debug, error, info};
 use webhook::{client::WebhookClient, models::Message};
 
 use crate::{
-    data_utils::{meters_to_feet, meters_to_miles, mps_to_miph},
     strava_api_service::{Activity, API_SERVICE},
+    utils::{meters_to_feet, meters_to_miles, mps_to_miph},
     AppState,
 };
 
