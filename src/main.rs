@@ -19,6 +19,7 @@ mod route_handlers;
 mod strava_api_service;
 mod utils;
 
+#[derive(Default)]
 pub struct AppState {
     // troy data
     is_troy_on_the_trails: bool,
@@ -27,18 +28,6 @@ pub struct AppState {
     trail_data_last_updated: Option<Instant>,
     trail_data: Vec<route_handlers::trail_check::TrailSystem>,
 }
-
-impl Default for AppState {
-    fn default() -> Self {
-        Self {
-            is_troy_on_the_trails: false,
-            troy_status_last_updated: None,
-            trail_data_last_updated: None,
-            trail_data: Vec::new(),
-        }
-    }
-}
-
 type SharedAppState = Arc<Mutex<AppState>>;
 
 #[tokio::main]
@@ -88,7 +77,7 @@ fn get_main_router() -> Router<SharedAppState> {
 
     let services_router = get_services_router();
     let api_router = get_api_router();
-    let main_router = Router::new()
+    Router::new()
         .route("/", get(route_handlers::home::handler))
         .route(
             &wh_path,
@@ -96,9 +85,7 @@ fn get_main_router() -> Router<SharedAppState> {
         )
         .route("/healthcheck", get(|| async { "Ok" }))
         .merge(services_router)
-        .nest("/api", api_router);
-
-    main_router
+        .nest("/api", api_router)
 }
 
 /**
@@ -114,12 +101,10 @@ fn get_services_router() -> Router<SharedAppState> {
     let favicon_path = format!("{}/favicon.ico", assets_path);
     let manifest_path = format!("{}/site.webmanifest", assets_path);
 
-    let services = Router::new()
+    Router::new()
         .nest_service("/assets", ServeDir::new(assets_path))
         .nest_service("/favicon.ico", ServeFile::new(favicon_path))
-        .nest_service("/site.webmanifest", ServeFile::new(manifest_path));
-
-    services
+        .nest_service("/site.webmanifest", ServeFile::new(manifest_path))
 }
 
 /**
