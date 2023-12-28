@@ -14,6 +14,9 @@ use tracing_subscriber::{
     filter::LevelFilter, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
 };
 
+use crate::db_service::DB_SERVICE;
+
+mod db_service;
 mod env_utils;
 mod route_handlers;
 mod strava_api_service;
@@ -21,9 +24,6 @@ mod utils;
 
 #[derive(Default)]
 pub struct AppState {
-    // troy data
-    is_troy_on_the_trails: bool,
-    troy_status_last_updated: Option<Instant>,
     // trail data
     trail_data_last_updated: Option<Instant>,
     trail_data: Vec<route_handlers::trail_check::TrailSystem>,
@@ -43,6 +43,11 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     debug!("initializing app state ...");
+
+    {
+        let db_service = DB_SERVICE.lock().await;
+        db_service.init_tables();
+    }
 
     let port = crate::env_utils::get_port();
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));

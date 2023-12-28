@@ -1,17 +1,11 @@
-use std::sync::Arc;
+use crate::db_service::DB_SERVICE;
 
-use axum::extract::State;
-use tokio::sync::Mutex;
-
-use crate::AppState;
-
-pub async fn handler(
-    State(state): State<Arc<Mutex<AppState>>>,
-) -> impl axum::response::IntoResponse {
-    let state = state.lock().await;
+pub async fn handler() -> impl axum::response::IntoResponse {
+    let db_service = DB_SERVICE.lock().await;
+    let is_troy_on_the_trails = db_service.get_troy_status().is_on_trail;
 
     let template = TrailCheckTemplate {
-        is_troy_on_the_trails: state.is_troy_on_the_trails,
+        is_troy_on_the_trails,
     };
     super::html_template::HtmlTemplate(template)
 }
