@@ -2,7 +2,7 @@ version: '3'
 tasks:
   default:
     cmds:
-      - task: watch
+      - task: dev
   tailwind-generate:
     cmds:
       - npx tailwindcss -i ./styles/tailwind.css -o ./assets/main.css
@@ -11,9 +11,10 @@ tasks:
       - cargo build
   run:
     cmds:
-      - task tailwind-generate
+      - task: tailwind-generate
       - cargo run
-  watch:
+  dev:
+    aliases: [watch]
     cmds:
       - cargo watch -s 'task run'
   deploy:
@@ -24,4 +25,4 @@ tasks:
       - flyctl scale count 0 -a troyonthetrails
   start-app:
     cmds:
-      - flyctl scale count 1 -a troyonthetrails
+      - flyctl scale count 1 -a troyonthetrai
