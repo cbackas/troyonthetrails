@@ -14,7 +14,7 @@ use tracing_subscriber::{
     filter::LevelFilter, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
 };
 
-use crate::db_service::DB_SERVICE;
+use crate::{db_service::DB_SERVICE, strava_api_service::API_SERVICE};
 
 mod db_service;
 mod env_utils;
@@ -47,6 +47,10 @@ async fn main() -> anyhow::Result<()> {
     {
         let db_service = DB_SERVICE.lock().await;
         db_service.init_tables();
+    }
+    {
+        let mut strava_api_service = API_SERVICE.lock().await;
+        strava_api_service.read_strava_auth_from_db().await;
     }
 
     let port = crate::env_utils::get_port();

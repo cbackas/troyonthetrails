@@ -16,7 +16,7 @@ use tokio::{
 };
 use tracing::debug;
 
-use crate::env_utils;
+use crate::{db_service::DB_SERVICE, env_utils};
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct StravaTotals {
@@ -134,37 +134,31 @@ pub struct StravaAPIService {
 
 impl StravaAPIService {
     pub fn new() -> Self {
-        let token_data = match read_token_data_from_file() {
-            Ok(token_data) => Some(token_data),
-            Err(_) => None,
-        };
-        let strava_user_id = env_utils::get_strava_user_id();
-
         Self {
-            token_data,
-            strava_user_id,
+            token_data: None,
+            strava_user_id: env_utils::get_strava_user_id(),
             strava_athlete_stats: None,
             strava_athlete_stats_updated: None,
         }
     }
 
-    fn write_token_data_to_file(&mut self) -> io::Result<()> {
-        let token_data = match &self.token_data {
-            Some(token_data) => token_data,
-            None => {
-                return Err(io::Error::new(
-                    ErrorKind::InvalidData,
-                    "No token data to write to file",
-                ))
-            }
+    pub async fn read_strava_auth_from_db(&mut self) {
+        let db_service = DB_SERVICE.lock().await;
+        let token_data = match db_service.get_strava_auth() {
+            Some(token_data) => Some(token_data),
+            _ => match read_token_data_from_file() {
+                Ok(token_data) => {
+                    debug!("Didn't find strava auth in db, but found it in file");
+                    db_service.set_strava_auth(token_data.clone());
+                    Some(token_data)
+                }
+                Err(e) => {
+                    debug!("Error reading strava auth from file: {}", e);
+                    None
+                }
+            },
         };
-
-        let path = get_token_cache_path();
-        let json_data = serde_json::to_string_pretty(&token_data)
-            .map_err(|e| io::Error::new(ErrorKind::InvalidData, e))?;
-        fs::write(path, json_data)?;
-        debug!("Wrote token data to file");
-        Ok(())
+        self.token_data = token_data;
     }
 
     pub async fn get_token_from_code(&mut self, code: String) -> anyhow::Result<()> {
@@ -211,11 +205,10 @@ impl StravaAPIService {
             }
 
             let strava_data = strava_data_to_token_data(strava_data);
-            self.token_data = Some(strava_data);
-            match self.write_token_data_to_file() {
-                Ok(_) => {}
-                Err(e) => debug!("Failed to write token data to file: {}", e),
-            };
+            self.token_data = Some(strava_data.clone());
+
+            let db_service = DB_SERVICE.lock().await;
+            db_service.set_strava_auth(strava_data);
 
             Ok(())
         } else {
@@ -253,11 +246,10 @@ impl StravaAPIService {
             let strava_data: StravaTokenResponse = serde_json::from_str(&strava_data.unwrap())
                 .context("Failed to deserialize JSON")?;
             let strava_data = strava_data_to_token_data(strava_data);
-            self.token_data = Some(strava_data);
-            match self.write_token_data_to_file() {
-                Ok(_) => {}
-                Err(e) => debug!("Failed to write token data to file: {}", e),
-            };
+            self.token_data = Some(strava_data.clone());
+
+            let db_service = DB_SERVICE.lock().await;
+            db_service.set_strava_auth(strava_data);
 
             Ok(())
         } else {
@@ -415,13 +407,9 @@ impl StravaAPIService {
     }
 }
 
-fn get_token_cache_path() -> PathBuf {
-    let base_path = env::var("TOKEN_DATA_PATH").unwrap_or_else(|_| "/data".to_string());
-    PathBuf::from(base_path).join(".strava_auth.json")
-}
-
 fn read_token_data_from_file() -> io::Result<TokenData> {
-    let path = get_token_cache_path();
+    let base_path = env::var("TOKEN_DATA_PATH").unwrap_or_else(|_| "/data".to_string());
+    let path = PathBuf::from(base_path).join(".strava_auth.json");
     let file_content = fs::read_to_string(path)?;
     let token_data = serde_json::from_str(&file_content)
         .map_err(|e| io::Error::new(ErrorKind::InvalidData, e))?;
