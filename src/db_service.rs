@@ -55,20 +55,13 @@ impl DbService {
     }
 
     pub fn init_tables(&self) {
-        match self.client.execute("CREATE TABLE IF NOT EXISTS troy_status (id INTEGER PRIMARY KEY CHECK (id = 1), is_on_trail INTEGER, trail_status_updated INTEGER)") {
-            Err(err) => {
-                error!("Failed to create table troy_status: {}", err);
-            }
-            Ok(_) => ()
+        if let Err(err) = self.client.execute("CREATE TABLE IF NOT EXISTS troy_status (id INTEGER PRIMARY KEY CHECK (id = 1), is_on_trail INTEGER, trail_status_updated INTEGER)") {
+            error!("Failed to create table troy_status: {}", err);
         }
 
-        match self.client
-            .execute("CREATE TABLE IF NOT EXISTS strava_auth (id INTEGER PRIMARY KEY CHECK (id = 1), access_token TEXT, refresh_token TEXT, expires_at INTEGER)") {
-                Err(err) => {
-                    error!("Failed to create table strava_auth: {}", err);
-                }
-                Ok(_) => ()
-            }
+        if let Err(err) = self.client.execute("CREATE TABLE IF NOT EXISTS strava_auth (id INTEGER PRIMARY KEY CHECK (id = 1), access_token TEXT, refresh_token TEXT, expires_at INTEGER)") {
+            error!("Failed to create table strava_auth: {}", err);
+        }
     }
 
     fn upsert(&self, statement: Statement, table: DBTable) {
@@ -122,15 +115,11 @@ impl DbService {
             is_on_trail: result
                 .try_column("is_on_trail")
                 .context("Failed to parse is_on_trail to int")
-                .unwrap_or(0 as i64)
+                .unwrap_or(0)
                 == 1,
             trail_status_updated: Some(
                 SystemTime::UNIX_EPOCH
-                    + Duration::from_secs(
-                        result
-                            .try_column("trail_status_updated")
-                            .unwrap_or(0 as i64) as u64,
-                    ),
+                    + Duration::from_secs(result.try_column("trail_status_updated").unwrap_or(0)),
             ),
         }
     }
@@ -180,7 +169,7 @@ impl DbService {
         Some(TokenData {
             access_token: result.try_column("access_token").unwrap_or("").to_string(),
             refresh_token: result.try_column("refresh_token").unwrap_or("").to_string(),
-            expires_at: result.try_column("expires_at").unwrap_or(0 as u64) as u64,
+            expires_at: result.try_column("expires_at").unwrap_or(0),
         })
     }
 
