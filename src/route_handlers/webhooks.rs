@@ -1,15 +1,12 @@
-use std::sync::Arc;
-
-use axum::{extract::State, Json};
+use axum::Json;
 use serde::{Deserialize, Serialize};
-use tokio::{sync::Mutex, time::Instant};
 use tracing::log::{debug, error, info};
 use webhook::{client::WebhookClient, models::Message};
 
 use crate::{
+    db_service::DB_SERVICE,
     strava_api_service::{Activity, API_SERVICE},
     utils::{meters_to_feet, meters_to_miles, mps_to_miph},
-    AppState,
 };
 
 #[derive(Debug, Serialize)]
@@ -29,15 +26,13 @@ struct WebhookData {
     max_speed: f64,
 }
 
-pub async fn handler(
-    State(state): State<Arc<Mutex<AppState>>>,
-    Json(payload): Json<WebhookRequest>,
-) -> impl axum::response::IntoResponse {
+pub async fn handler(Json(payload): Json<WebhookRequest>) -> impl axum::response::IntoResponse {
     debug!("Webhook request: {:?}", payload);
 
-    let mut state = state.lock().await;
+    let db_service = DB_SERVICE.lock().await;
+    let troy_status = db_service.get_troy_status();
 
-    let current_status = state.is_troy_on_the_trails;
+    let current_status = troy_status.is_on_trail;
     let new_status = payload.on_the_trail;
     if current_status != new_status {
         info!(
@@ -50,8 +45,7 @@ pub async fn handler(
         });
     }
 
-    state.is_troy_on_the_trails = payload.on_the_trail;
-    state.troy_status_last_updated = Some(Instant::now());
+    db_service.set_troy_status(new_status);
 
     axum::http::status::StatusCode::OK
 }
