@@ -32,7 +32,7 @@ impl Display for DBTable {
 }
 
 lazy_static! {
-    pub static ref DB_SERVICE: Mutex<DbService> = Mutex::new(DbService::new());
+    pub static ref DB_SERVICE: Mutex<DbService> = Mutex::new(DbService::default());
 }
 
 pub struct DbService {
@@ -41,7 +41,9 @@ pub struct DbService {
 
 impl Default for DbService {
     fn default() -> Self {
-        Self::new()
+        let service = Self::new();
+        service.init_tables();
+        service
     }
 }
 
