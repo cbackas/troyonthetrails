@@ -1,9 +1,8 @@
-use crate::db_service::DB_SERVICE;
+use crate::db_service::get_troy_status;
 
 pub async fn handler() -> impl axum::response::IntoResponse {
-    let db_service = DB_SERVICE.lock().await;
     let template = TrailCheckTemplate {
-        is_troy_on_the_trails: db_service.get_troy_status().is_on_trail,
+        is_troy_on_the_trails: get_troy_status().await.is_on_trail,
     };
     super::html_template::HtmlTemplate(template)
 }

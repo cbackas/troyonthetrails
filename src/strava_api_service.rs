@@ -6,17 +6,16 @@ use std::{
 };
 
 use anyhow::Context;
-use lazy_static::lazy_static;
 use reqwest::{header, Response};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::{
-    sync::Mutex,
-    time::{sleep, Instant},
-};
-use tracing::debug;
+use tokio::time::{sleep, Instant};
+use tracing::{debug, trace, warn};
 
-use crate::{db_service::DB_SERVICE, env_utils};
+use crate::{
+    db_service::{get_strava_auth, set_strava_auth},
+    env_utils,
+};
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct StravaTotals {
@@ -121,10 +120,6 @@ pub struct StravaTokenResponse {
 const MAX_RETRIES: u32 = 5;
 const INITIAL_BACKOFF: Duration = Duration::from_secs(1);
 
-lazy_static! {
-    pub static ref API_SERVICE: Mutex<StravaAPIService> = Mutex::new(StravaAPIService::new());
-}
-
 pub struct StravaAPIService {
     pub token_data: Option<TokenData>,
     pub strava_user_id: Option<String>,
@@ -143,17 +138,16 @@ impl StravaAPIService {
     }
 
     pub async fn read_strava_auth_from_db(&mut self) {
-        let db_service = DB_SERVICE.lock().await;
-        let token_data = match db_service.get_strava_auth() {
+        let token_data = match get_strava_auth().await {
             Some(token_data) => Some(token_data),
             _ => match read_token_data_from_file() {
                 Ok(token_data) => {
                     debug!("Didn't find strava auth in db, but found it in file");
-                    db_service.set_strava_auth(token_data.clone());
+                    set_strava_auth(token_data.clone()).await;
                     Some(token_data)
                 }
                 Err(e) => {
-                    debug!("Error reading strava auth from file: {}", e);
+                    warn!("Error reading strava auth from file: {}", e);
                     None
                 }
             },
@@ -207,8 +201,7 @@ impl StravaAPIService {
             let strava_data = strava_data_to_token_data(strava_data);
             self.token_data = Some(strava_data.clone());
 
-            let db_service = DB_SERVICE.lock().await;
-            db_service.set_strava_auth(strava_data);
+            set_strava_auth(strava_data).await;
 
             Ok(())
         } else {
@@ -248,8 +241,7 @@ impl StravaAPIService {
             let strava_data = strava_data_to_token_data(strava_data);
             self.token_data = Some(strava_data.clone());
 
-            let db_service = DB_SERVICE.lock().await;
-            db_service.set_strava_auth(strava_data);
+            set_strava_auth(strava_data).await;
 
             Ok(())
         } else {
@@ -330,7 +322,7 @@ impl StravaAPIService {
 
     pub async fn get_athlete_stats(&mut self) -> anyhow::Result<StravaData> {
         if let Some(strava_athlete_stats) = self.get_cached_athlete_stats() {
-            debug!("Using cached athlete stats");
+            trace!("Using cached athlete stats");
             return Ok(strava_athlete_stats);
         }
 
@@ -343,7 +335,7 @@ impl StravaAPIService {
             }
         };
 
-        debug!("Fetching new athlete stats");
+        trace!("Fetching new athlete stats");
         let resp = self
             .get_strava_data(format!(
                 "https://www.strava.com/api/v3/athletes/{}/stats",

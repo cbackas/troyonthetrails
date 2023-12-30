@@ -3,7 +3,7 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 use tracing::{debug, error};
 
-use crate::strava_api_service::API_SERVICE;
+use crate::API_SERVICE;
 
 #[derive(Deserialize)]
 #[serde(untagged)]

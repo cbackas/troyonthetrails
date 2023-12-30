@@ -1,15 +1,14 @@
 use std::{
+    env,
     fmt::{Display, Formatter},
     time::{Duration, SystemTime},
 };
 
 use anyhow::Context;
-use lazy_static::lazy_static;
-use libsql_client::{args, Statement, SyncClient};
-use tokio::sync::Mutex;
-use tracing::{debug, error};
+use libsql::{params::IntoParams, Connection};
+use tracing::{debug, error, trace};
 
-use crate::strava_api_service::TokenData;
+use crate::{strava_api_service::TokenData, DB_SERVICE};
 
 #[derive(Debug)]
 pub struct TroyStatus {
@@ -17,7 +16,7 @@ pub struct TroyStatus {
     pub trail_status_updated: Option<SystemTime>,
 }
 
-enum DBTable {
+pub enum DBTable {
     TroyStatus,
     StravaAuth,
 }
@@ -31,43 +30,38 @@ impl Display for DBTable {
     }
 }
 
-lazy_static! {
-    pub static ref DB_SERVICE: Mutex<DbService> = Mutex::new(DbService::default());
-}
-
 pub struct DbService {
-    client: SyncClient,
-}
-
-impl Default for DbService {
-    fn default() -> Self {
-        let service = Self::new();
-        service.init_tables();
-        service
-    }
+    database: Connection,
 }
 
 impl DbService {
     pub fn new() -> Self {
-        let client = SyncClient::from_env()
-            .context("Failed to connect to libsql db")
-            .unwrap();
+        trace!("initializing new DbService");
 
-        DbService { client }
+        let database = libsql::Database::open_remote(
+            env::var("LIBSQL_CLIENT_URL").unwrap(),
+            env::var("LIBSQL_CLIENT_TOKEN").unwrap(),
+        )
+        .unwrap()
+        .connect()
+        .context("Failed to create database")
+        .unwrap();
+
+        DbService { database }
     }
 
-    pub fn init_tables(&self) {
-        if let Err(err) = self.client.execute("CREATE TABLE IF NOT EXISTS troy_status (id INTEGER PRIMARY KEY CHECK (id = 1), is_on_trail INTEGER, trail_status_updated INTEGER)") {
+    pub async fn init_tables(&self) {
+        if let Err(err) = self.database.execute("CREATE TABLE IF NOT EXISTS troy_status (id INTEGER PRIMARY KEY CHECK (id = 1), is_on_trail INTEGER, trail_status_updated INTEGER)", libsql::params!()).await {
             error!("Failed to create table troy_status: {}", err);
         }
 
-        if let Err(err) = self.client.execute("CREATE TABLE IF NOT EXISTS strava_auth (id INTEGER PRIMARY KEY CHECK (id = 1), access_token TEXT, refresh_token TEXT, expires_at INTEGER)") {
+        if let Err(err) = self.database.execute("CREATE TABLE IF NOT EXISTS strava_auth (id INTEGER PRIMARY KEY CHECK (id = 1), access_token TEXT, refresh_token TEXT, expires_at INTEGER)", libsql::params!()).await {
             error!("Failed to create table strava_auth: {}", err);
         }
     }
 
-    fn upsert(&self, statement: Statement, table: DBTable) {
-        let result = self.client.execute(statement);
+    pub async fn execute(&self, statement: &str, params: impl IntoParams, table: DBTable) {
+        let result = self.database.execute(statement, params).await;
 
         if result.is_err() {
             error!("{}", result.unwrap_err());
@@ -75,117 +69,131 @@ impl DbService {
         }
 
         let result = result.unwrap();
-        if result.rows_affected != 1 {
+        if result != 1 {
             error!(
                 "Failed to to db, expected 1 row affected but got {}",
-                result.rows_affected
+                result
             );
             return;
         }
 
         debug!("{} upserted to db", table);
     }
+}
 
-    pub fn get_troy_status(&self) -> TroyStatus {
-        let result = self.client.execute("SELECT * FROM troy_status");
+pub async fn get_troy_status() -> TroyStatus {
+    let result = DB_SERVICE
+        .lock()
+        .await
+        .database
+        .query("SELECT * FROM troy_status", libsql::params!())
+        .await;
 
-        if result.is_err() {
-            error!("Failed to get troy status from db");
-            return TroyStatus {
-                is_on_trail: false,
-                trail_status_updated: None,
-            };
-        }
-
-        let result = result.unwrap();
-
-        if result.rows.len() != 1 {
-            error!(
-                "Failed to get troy status from db, expected 1 row but got {}",
-                result.rows.len()
-            );
-            return TroyStatus {
-                is_on_trail: false,
-                trail_status_updated: None,
-            };
-        }
-
-        let mut result = result.rows;
-        let result = result.pop().unwrap();
-
-        TroyStatus {
-            is_on_trail: result
-                .try_column("is_on_trail")
-                .context("Failed to parse is_on_trail to int")
-                .unwrap_or(0)
-                == 1,
-            trail_status_updated: Some(
-                SystemTime::UNIX_EPOCH
-                    + Duration::from_secs(result.try_column("trail_status_updated").unwrap_or(0)),
-            ),
-        }
+    if result.is_err() {
+        error!("Failed to get troy status from db");
+        return TroyStatus {
+            is_on_trail: false,
+            trail_status_updated: None,
+        };
     }
 
-    pub fn set_troy_status(&self, is_on_trail: bool) {
-        let is_on_trail = match is_on_trail {
-            true => 1,
-            false => 0,
-        };
+    let result = match result.unwrap().next() {
+        Err(_) => None,
+        Ok(result) => result,
+    };
 
-        // get current unix milis timestamp
-        let current_timestamp: i64 = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)
-        {
-            Ok(duration) => duration.as_secs() as i64,
-            Err(_) => 0,
+    if result.is_none() {
+        error!("Failed to get troy status from db, didn't find any rows",);
+        return TroyStatus {
+            is_on_trail: false,
+            trail_status_updated: None,
         };
+    }
 
-        self
-            .upsert(Statement::with_args(
+    #[derive(Debug, serde::Deserialize)]
+    #[allow(dead_code)]
+    struct TroyStatusRow {
+        id: i64,
+        is_on_trail: u8,
+        trail_status_updated: u64,
+    }
+
+    let result = result.unwrap();
+
+    let thing = libsql::de::from_row::<TroyStatusRow>(&result).unwrap();
+
+    TroyStatus {
+        is_on_trail: thing.is_on_trail == 1,
+        trail_status_updated: Some(
+            SystemTime::UNIX_EPOCH + Duration::from_secs(thing.trail_status_updated),
+        ),
+    }
+}
+
+pub async fn set_troy_status(is_on_trail: bool) {
+    let is_on_trail = match is_on_trail {
+        true => 1,
+        false => 0,
+    };
+
+    // get current unix milis timestamp
+    let current_timestamp: i64 = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+        Ok(duration) => duration.as_secs() as i64,
+        Err(_) => 0,
+    };
+
+    DB_SERVICE.lock().await
+            .execute(
                 "INSERT INTO troy_status (id, is_on_trail, trail_status_updated) \
                 VALUES (1, ?, ?) \
                 ON CONFLICT (id) \
                 DO UPDATE SET is_on_trail = excluded.is_on_trail, trail_status_updated = excluded.trail_status_updated",
-                    args!(is_on_trail, current_timestamp),
-            ), DBTable::TroyStatus);
+                libsql::params!(is_on_trail, current_timestamp),
+                DBTable::TroyStatus).await;
+}
+
+pub async fn get_strava_auth() -> Option<TokenData> {
+    let result = DB_SERVICE
+        .lock()
+        .await
+        .database
+        .query("SELECT * FROM strava_auth", libsql::params!())
+        .await;
+
+    if result.is_err() {
+        error!("Failed to get strava auth from db");
+        return None;
     }
 
-    pub fn get_strava_auth(&self) -> Option<TokenData> {
-        let result = self.client.execute("SELECT * FROM strava_auth");
-        if result.is_err() {
-            error!("Failed to get strava auth from db");
-            return None;
-        }
+    let result = match result.unwrap().next() {
+        Err(_) => None,
+        Ok(result) => result,
+    };
 
-        let result = result.unwrap();
-        if result.rows.len() != 1 {
-            error!(
-                "Failed to get strava auth from db, expected 1 row but got {}",
-                result.rows.len()
-            );
-            return None;
-        }
-
-        let mut result = result.rows;
-        let result = result.pop().unwrap();
-
-        Some(TokenData {
-            access_token: result.try_column("access_token").unwrap_or("").to_string(),
-            refresh_token: result.try_column("refresh_token").unwrap_or("").to_string(),
-            expires_at: result.try_column("expires_at").unwrap_or(0),
-        })
+    if result.is_none() {
+        error!("Failed to get strava auth from db, expected 1 row but found none");
+        return None;
     }
 
-    pub fn set_strava_auth(&self, token_data: TokenData) {
-        let access_token = token_data.access_token;
-        let refresh_token = token_data.refresh_token;
-        let expires_at = token_data.expires_at as i64;
+    let result = result.unwrap();
 
-        self.upsert(Statement::with_args(
+    Some(TokenData {
+        access_token: result.get(1).unwrap_or("".to_string()),
+        refresh_token: result.get(2).unwrap_or("".to_string()),
+        expires_at: result.get(3).unwrap_or(0),
+    })
+}
+
+pub async fn set_strava_auth(token_data: TokenData) {
+    let access_token = token_data.access_token;
+    let refresh_token = token_data.refresh_token;
+    let expires_at = token_data.expires_at as i64;
+
+    DB_SERVICE.lock().await.execute(
             "INSERT INTO strava_auth (id, access_token, refresh_token, expires_at) \
             VALUES (1, ?, ?, ?) \
             ON CONFLICT (id) \
             DO UPDATE SET access_token = excluded.access_token, refresh_token = excluded.refresh_token, expires_at = excluded.expires_at",
-            args!(access_token, refresh_token, expires_at),
-        ), DBTable::StravaAuth);
-    }
+            libsql::params!(access_token, refresh_token, expires_at),
+        DBTable::StravaAuth).await;
 }
