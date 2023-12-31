@@ -79,7 +79,7 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("error while starting API server")?;
 
-    debug!("Server srarted");
+    info!("Server srarted");
 
     anyhow::Ok(())
 }
