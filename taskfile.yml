@@ -17,6 +17,8 @@ tasks:
     aliases: [watch]
     cmds:
       - cargo watch -s 'task run'
+    env:
+      RUST_BACKTRACE: 1
   deploy:
     cmds:
       - flyctl deploy

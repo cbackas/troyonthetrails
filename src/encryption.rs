@@ -34,18 +34,17 @@ impl From<std::string::FromUtf8Error> for EncryptError {
     }
 }
 
-pub fn encrypt(value: String) -> Result<String, EncryptError> {
+pub fn encrypt(value: String) -> Result<Vec<u8>, CocoonError> {
     let encryption_key = get_db_encryption_key();
     let mut cocoon = Cocoon::new(&encryption_key.as_bytes());
     let encrypted = cocoon.wrap(value.as_bytes())?;
-    let encrypted_string = String::from_utf8(encrypted)?;
-    Ok(encrypted_string)
+    Ok(encrypted)
 }
 
-pub fn decrypt(value: String) -> Result<String, EncryptError> {
+pub fn decrypt(value: Vec<u8>) -> Result<String, EncryptError> {
     let encryption_key = get_db_encryption_key();
     let cocoon = Cocoon::new(&encryption_key.as_bytes());
-    let decrypted = cocoon.unwrap(&value.as_bytes())?;
+    let decrypted = cocoon.unwrap(&value)?;
     let decrypted = String::from_utf8(decrypted)?;
     Ok(decrypted)
 }
