@@ -14,9 +14,7 @@ pub enum EncryptError {
 
 impl fmt::Display for EncryptError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            e => std::fmt::Debug::fmt(&e, f),
-        }
+        std::fmt::Debug::fmt(&self, f)
     }
 }
 
