@@ -1,6 +1,6 @@
 use std::{
     env,
-    fmt::{Display, Formatter},
+    fmt::{Debug, Display, Formatter},
     time::{Duration, SystemTime},
 };
 
@@ -8,7 +8,11 @@ use anyhow::Context;
 use libsql::{params::IntoParams, Connection};
 use tracing::{debug, error, trace};
 
-use crate::{strava_api_service::TokenData, DB_SERVICE};
+use crate::{
+    encryption::{decrypt, encrypt},
+    strava_api_service::TokenData,
+    DB_SERVICE,
+};
 
 #[derive(Debug)]
 pub struct TroyStatus {
@@ -183,23 +187,37 @@ pub async fn get_strava_auth() -> Option<TokenData> {
 
     let result = result.unwrap();
 
+    let access_token = result.get(1).unwrap_or("".to_string());
+    let access_token = decrypt(access_token).unwrap();
+
+    let refresh_token = result.get(2).unwrap_or("".to_string());
+    let refresh_token = decrypt(refresh_token).unwrap();
+
     Some(TokenData {
-        access_token: result.get(1).unwrap_or("".to_string()),
-        refresh_token: result.get(2).unwrap_or("".to_string()),
+        access_token,
+        refresh_token,
         expires_at: result.get(3).unwrap_or(0),
     })
 }
 
 pub async fn set_strava_auth(token_data: TokenData) {
-    let access_token = token_data.access_token;
-    let refresh_token = token_data.refresh_token;
-    let expires_at = token_data.expires_at as i64;
+    let access_token = encrypt(token_data.access_token);
+    if access_token.is_err() {
+        error!("Failed to encrypt access token");
+        return;
+    }
+
+    let refresh_token = encrypt(token_data.refresh_token);
+    if refresh_token.is_err() {
+        error!("Failed to encrypt refresh token");
+        return;
+    }
 
     DB_SERVICE.lock().await.execute(
             "INSERT INTO strava_auth (id, access_token, refresh_token, expires_at) \
-            VALUES (1, ?, ?, ?) \
+            VALUES (vec1, ?, ?, ?) \
             ON CONFLICT (id) \
             DO UPDATE SET access_token = excluded.access_token, refresh_token = excluded.refresh_token, expires_at = excluded.expires_at",
-            libsql::params!(access_token, refresh_token, expires_at),
+            libsql::params!(access_token.unwrap(), refresh_token.unwrap(), token_data.expires_at),
         DBTable::StravaAuth).await;
 }
