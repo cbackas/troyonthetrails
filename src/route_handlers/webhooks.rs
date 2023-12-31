@@ -4,9 +4,10 @@ use tracing::log::{debug, error, info};
 use webhook::{client::WebhookClient, models::Message};
 
 use crate::{
-    db_service::DB_SERVICE,
-    strava_api_service::{Activity, API_SERVICE},
+    db_service::{get_troy_status, set_troy_status},
+    strava_api_service::Activity,
     utils::{meters_to_feet, meters_to_miles, mps_to_miph},
+    API_SERVICE,
 };
 
 #[derive(Debug, Serialize)]
@@ -29,9 +30,7 @@ struct WebhookData {
 pub async fn handler(Json(payload): Json<WebhookRequest>) -> impl axum::response::IntoResponse {
     debug!("Webhook request: {:?}", payload);
 
-    let db_service = DB_SERVICE.lock().await;
-    let troy_status = db_service.get_troy_status();
-
+    let troy_status = get_troy_status().await;
     let current_status = troy_status.is_on_trail;
     let new_status = payload.on_the_trail;
     if current_status != new_status {
@@ -40,12 +39,12 @@ pub async fn handler(Json(payload): Json<WebhookRequest>) -> impl axum::response
             current_status, new_status
         );
 
+        set_troy_status(new_status).await;
+
         tokio::spawn(async move {
             send_discord_webhook(new_status).await;
         });
     }
-
-    db_service.set_troy_status(new_status);
 
     axum::http::status::StatusCode::OK
 }

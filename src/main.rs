@@ -7,20 +7,30 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use lazy_static::lazy_static;
+use strava_api_service::StravaAPIService;
 use tokio::{sync::Mutex, time::Instant};
-use tower_http::services::{ServeDir, ServeFile};
+use tower_http::{
+    services::{ServeDir, ServeFile},
+    trace::TraceLayer,
+};
 use tracing::{debug, info};
 use tracing_subscriber::{
     filter::LevelFilter, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
 };
 
-use crate::strava_api_service::API_SERVICE;
+use crate::db_service::DbService;
 
 mod db_service;
 mod env_utils;
 mod route_handlers;
 mod strava_api_service;
 mod utils;
+
+lazy_static! {
+    pub static ref DB_SERVICE: Mutex<DbService> = Mutex::new(DbService::new());
+    pub static ref API_SERVICE: Mutex<StravaAPIService> = Mutex::new(StravaAPIService::new());
+}
 
 #[derive(Default)]
 pub struct AppState {
@@ -45,6 +55,10 @@ async fn main() -> anyhow::Result<()> {
     debug!("initializing app state ...");
 
     {
+        let db_service = DB_SERVICE.lock().await;
+        db_service.init_tables().await;
+    }
+    {
         let mut strava_api_service = API_SERVICE.lock().await;
         strava_api_service.read_strava_auth_from_db().await;
     }
@@ -59,12 +73,13 @@ async fn main() -> anyhow::Result<()> {
         .serve(
             get_main_router()
                 .with_state(SharedAppState::default())
+                .layer(TraceLayer::new_for_http())
                 .into_make_service(),
         )
         .await
         .context("error while starting API server")?;
 
-    debug!("Server srarted");
+    info!("Server srarted");
 
     anyhow::Ok(())
 }

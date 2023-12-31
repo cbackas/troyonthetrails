@@ -6,8 +6,8 @@ use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer};
 use std::fmt;
 use tokio::sync::Mutex;
-use tracing::log::{debug, error};
-use tracing::warn;
+use tracing::log::error;
+use tracing::{trace, warn};
 
 use crate::AppState;
 
@@ -85,7 +85,7 @@ pub async fn handler(
         if let Some(last_updated) = state.trail_data_last_updated {
             // if the trail data was updated less than 5 minutes ago, just use that
             if last_updated.elapsed().as_secs() < 300 {
-                debug!("Using cached trail data");
+                trace!("Using cached trail data");
                 let template = TrailCheckTemplate {
                     trails: state.trail_data.clone(),
                 };
@@ -136,7 +136,7 @@ async fn get_trail_html() -> anyhow::Result<String> {
         .context("Failed to get HTML from data source")?;
     let html = resp.text().await.context("Couldn't find html body")?;
 
-    debug!("Fetched trail data from data source");
+    trace!("Fetched trail data from data source");
 
     Ok(html)
 }
