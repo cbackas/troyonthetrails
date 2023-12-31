@@ -127,6 +127,12 @@ pub struct StravaAPIService {
     pub strava_athlete_stats_updated: Option<Instant>,
 }
 
+impl Default for StravaAPIService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StravaAPIService {
     pub fn new() -> Self {
         Self {

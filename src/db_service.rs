@@ -34,6 +34,12 @@ pub struct DbService {
     database: Connection,
 }
 
+impl Default for DbService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DbService {
     pub fn new() -> Self {
         trace!("initializing new DbService");
