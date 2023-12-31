@@ -1,9 +1,4 @@
-use std::{
-    env, fs,
-    io::{self, ErrorKind},
-    path::PathBuf,
-    time::Duration,
-};
+use std::time::Duration;
 
 use anyhow::Context;
 use reqwest::{header, Response};
@@ -146,17 +141,10 @@ impl StravaAPIService {
     pub async fn read_strava_auth_from_db(&mut self) {
         let token_data = match get_strava_auth().await {
             Some(token_data) => Some(token_data),
-            _ => match read_token_data_from_file() {
-                Ok(token_data) => {
-                    debug!("Didn't find strava auth in db, but found it in file");
-                    set_strava_auth(token_data.clone()).await;
-                    Some(token_data)
-                }
-                Err(e) => {
-                    warn!("Error reading strava auth from file: {}", e);
-                    None
-                }
-            },
+            _ => {
+                warn!("No strava auth data found in db");
+                None
+            }
         };
         self.token_data = token_data;
     }
@@ -403,15 +391,6 @@ impl StravaAPIService {
             ))
         }
     }
-}
-
-fn read_token_data_from_file() -> io::Result<TokenData> {
-    let base_path = env::var("TOKEN_DATA_PATH").unwrap_or_else(|_| "/data".to_string());
-    let path = PathBuf::from(base_path).join(".strava_auth.json");
-    let file_content = fs::read_to_string(path)?;
-    let token_data = serde_json::from_str(&file_content)
-        .map_err(|e| io::Error::new(ErrorKind::InvalidData, e))?;
-    Ok(token_data)
 }
 
 fn strava_data_to_token_data(strava_data: StravaTokenResponse) -> TokenData {

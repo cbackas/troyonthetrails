@@ -49,3 +49,10 @@ pub fn get_strava_user_id() -> Option<String> {
         _ => None,
     }
 }
+
+pub fn get_db_encryption_key() -> String {
+    match env::var("DB_ENCRYPTION_KEY") {
+        Ok(key) => key,
+        _ => "defaultdbencryptionkey".to_string(),
+    }
+}

@@ -22,6 +22,7 @@ use tracing_subscriber::{
 use crate::db_service::DbService;
 
 mod db_service;
+mod encryption;
 mod env_utils;
 mod route_handlers;
 mod strava_api_service;

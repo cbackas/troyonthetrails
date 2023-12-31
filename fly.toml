@@ -13,10 +13,6 @@ primary_region = "ord"
   min_machines_running = 0
   processes = ["app"]
 
-[mounts]
-  source = "troyonthetrails_data"
-  destination = "/data"
-
 [env]
   HOST = "troyonthetrails.com"
   RUST_LOG = "troyonthetrails=info,tower_http=debug"
