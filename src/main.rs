@@ -10,6 +10,10 @@ use axum::{
 use lazy_static::lazy_static;
 use strava_api_service::StravaAPIService;
 use tokio::{sync::Mutex, time::Instant};
+use tower_http::compression::{
+    predicate::{DefaultPredicate, NotForContentType, Predicate},
+    CompressionLayer,
+};
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::TraceLayer,
@@ -70,11 +74,15 @@ async fn main() -> anyhow::Result<()> {
 
     info!("Starting server at host: {}", host_uri);
 
+    let predicate = DefaultPredicate::new().and(NotForContentType::new("application/json"));
+    let compression_layer = CompressionLayer::new().gzip(true).compress_when(predicate);
+
     axum::Server::bind(&addr)
         .serve(
             get_main_router()
                 .with_state(SharedAppState::default())
                 .layer(TraceLayer::new_for_http())
+                .layer(compression_layer)
                 .into_make_service(),
         )
         .await
