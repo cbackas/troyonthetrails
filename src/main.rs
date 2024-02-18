@@ -24,7 +24,7 @@ use tower_http::{
     services::{ServeDir, ServeFile},
     trace::TraceLayer,
 };
-use tracing::{debug, info, Span};
+use tracing::{debug, info, trace, Span};
 use tracing_subscriber::{
     filter::LevelFilter, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
 };
@@ -97,7 +97,13 @@ async fn main() -> anyhow::Result<()> {
                         };
                         let status = response.status();
                         let latency = utils::duration_to_ms_string(latency);
-                        info!("{} {} {}", url, status, latency);
+
+                        if url == "/healthcheck" {
+                            trace!("{} {} {}", url, status, latency);
+                            return;
+                        }
+
+                        debug!("{} {} {}", url, status, latency);
                     },
                 ))
                 .layer(compression_layer)
