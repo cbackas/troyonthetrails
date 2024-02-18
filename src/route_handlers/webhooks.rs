@@ -21,6 +21,7 @@ pub struct WebhookRequest {
 }
 
 struct WebhookData {
+    name: Option<String>,
     distance: f64,
     total_elevation_gain: f64,
     average_speed: f64,
@@ -69,12 +70,20 @@ async fn send_discord_webhook(is_on_the_trails: bool) {
                 }
 
                 Some(last_activity) => {
+                    let name = match last_activity.name.clone().as_str() {
+                        "Afternoon Mountain Bike Ride" => None,
+                        "Morning Mountain Bike Ride" => None,
+                        "Evening Mountain Bike Ride" => None,
+                        "Lunch Mountain Bike Ride" => None,
+                        _ => Some(last_activity.name),
+                    };
                     let distance = meters_to_miles(last_activity.distance, false);
                     let total_elevation_gain =
                         meters_to_feet(last_activity.total_elevation_gain, true);
                     let average_speed = mps_to_miph(last_activity.average_speed, false);
                     let max_speed = mps_to_miph(last_activity.max_speed, false);
                     Some(WebhookData {
+                        name,
                         distance,
                         total_elevation_gain,
                         average_speed,
@@ -110,6 +119,10 @@ async fn send_discord_webhook(is_on_the_trails: bool) {
             );
 
         if let Some(webhook_data) = &strava_stats {
+            if let Some(name) = &webhook_data.name {
+                embed.description(name);
+            }
+
             embed
                 .field("Distance", &format!("{}mi", &webhook_data.distance), true)
                 .field(
