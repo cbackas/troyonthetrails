@@ -4,6 +4,9 @@ use anyhow::Context;
 use dotenv::dotenv;
 
 use axum::{
+    http::{Request, Uri},
+    middleware::Next,
+    response::Response,
     routing::{get, post},
     Router,
 };
@@ -81,7 +84,18 @@ async fn main() -> anyhow::Result<()> {
         .serve(
             get_main_router()
                 .with_state(SharedAppState::default())
-                .layer(TraceLayer::new_for_http())
+                .layer(axum::middleware::from_fn(uri_middleware))
+                .layer(TraceLayer::new_for_http().on_response(
+                    |response: &Response, latency: std::time::Duration, _span: &Span| {
+                        let url = match response.extensions().get::<RequestUri>().map(|r| &r.0) {
+                            Some(uri) => uri.to_string(),
+                            None => "unknown".to_string(),
+                        };
+                        let status = response.status();
+                        let latency = utils::duration_to_ms_string(latency);
+                        info!("{} {} {}", url, status, latency);
+                    },
+                ))
                 .layer(compression_layer)
                 .into_make_service(),
         )
@@ -153,4 +167,16 @@ fn get_api_router() -> Router<SharedAppState> {
                 .route("/callback", get(route_handlers::strava_callback::handler))
                 .route("/data", get(route_handlers::strava_data::handler)),
         )
+}
+
+struct RequestUri(Uri);
+
+async fn uri_middleware<B>(request: Request<B>, next: Next<B>) -> Response {
+    let uri = request.uri().clone();
+
+    let mut response = next.run(request).await;
+
+    response.extensions_mut().insert(RequestUri(uri));
+
+    response
 }

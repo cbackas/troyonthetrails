@@ -44,6 +44,14 @@ pub fn format_thousands(num: f64) -> String {
     }
 }
 
+pub fn duration_to_ms_string(duration: std::time::Duration) -> String {
+    // Convert the duration to milliseconds as f64
+    let milliseconds =
+        duration.as_secs_f64() * 1000.0 + duration.subsec_nanos() as f64 / 1_000_000.0;
+    // Format the milliseconds to a string with 2 decimal places and add 'ms' postfix
+    format!("{:.2}ms", milliseconds)
+}
+
 pub fn hash_string(string: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(string);
