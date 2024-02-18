@@ -4,8 +4,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use anyhow::Context;
-use libsql::{params::IntoParams, Connection};
+use libsql::params::IntoParams;
 use tracing::{debug, error, trace};
 
 use crate::{
@@ -34,68 +33,89 @@ impl Display for DBTable {
     }
 }
 
-pub struct DbService {
-    database: Connection,
+pub async fn get_db_service() -> &'static DbService {
+    DB_SERVICE
+        .get_or_init(|| async {
+            let db = libsql::Database::open_with_remote_sync(
+                env::var("LIBSQL_LOCAL_DB_PATH").unwrap_or("file:local_replica.db".to_string()),
+                env::var("LIBSQL_CLIENT_URL").unwrap(),
+                env::var("LIBSQL_CLIENT_TOKEN").unwrap(),
+            )
+            .await
+            .expect("Failed to create database");
+
+            debug!("Initialized db");
+
+            let _ = db.sync().await.expect("Failed to sync db");
+
+            trace!("Synced remote db to local disk");
+
+            DbService { db }
+        })
+        .await
 }
 
-impl Default for DbService {
-    fn default() -> Self {
-        Self::new()
-    }
+pub struct DbService {
+    db: libsql::Database,
 }
 
 impl DbService {
-    pub fn new() -> Self {
-        trace!("initializing new DbService");
-
-        let database = libsql::Database::open_remote(
-            env::var("LIBSQL_CLIENT_URL").unwrap(),
-            env::var("LIBSQL_CLIENT_TOKEN").unwrap(),
-        )
-        .unwrap()
-        .connect()
-        .context("Failed to create database")
-        .unwrap();
-
-        DbService { database }
-    }
-
     pub async fn init_tables(&self) {
-        if let Err(err) = self.database.execute("CREATE TABLE IF NOT EXISTS troy_status (id INTEGER PRIMARY KEY CHECK (id = 1), is_on_trail INTEGER, trail_status_updated INTEGER)", libsql::params!()).await {
-            error!("Failed to create table troy_status: {}", err);
-        }
-
-        if let Err(err) = self.database.execute("CREATE TABLE IF NOT EXISTS strava_auth (id INTEGER PRIMARY KEY CHECK (id = 1), access_token TEXT, refresh_token TEXT, expires_at INTEGER)", libsql::params!()).await {
-            error!("Failed to create table strava_auth: {}", err);
-        }
+        let conn = self.db.connect().expect("Failed to connect to db");
+        let _ = conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS troy_status (id INTEGER PRIMARY KEY CHECK (id = 1), is_on_trail INTEGER, trail_status_updated INTEGER)",
+                libsql::params!(),
+            )
+            .await;
+        let _ = conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS strava_auth (id INTEGER PRIMARY KEY CHECK (id = 1), access_token TEXT, refresh_token TEXT, expires_at INTEGER)",
+                libsql::params!(),
+            )
+            .await;
     }
 
-    pub async fn execute(&self, statement: &str, params: impl IntoParams, table: DBTable) {
-        let result = self.database.execute(statement, params).await;
+    // execute the statement and return the number of rows affected
+    // also syncs the DB with remote primary
+    pub async fn execute(
+        &self,
+        statement: &str,
+        params: impl IntoParams,
+        table: DBTable,
+    ) -> anyhow::Result<u64> {
+        let db = &self.db;
+        let result = db.connect()?.execute(statement, params).await;
 
         if result.is_err() {
-            error!("{}", result.unwrap_err());
-            return;
+            return Err(result.unwrap_err().into());
         }
 
         let result = result.unwrap();
-        if result != 1 {
+        if result == 0 {
             error!(
                 "Failed to to db, expected 1 row affected but got {}",
                 result
             );
-            return;
+            return Err(anyhow::anyhow!(
+                "Failed to to db, expected 1 row affected but got {}",
+                result
+            ));
         }
 
         debug!("{} upserted to db", table);
+
+        let _sync = db.sync().await?;
+        Ok(result)
     }
 }
 
 pub async fn get_troy_status() -> TroyStatus {
-    let result = DB_SERVICE
-        .lock()
-        .await
-        .database
+    let db_service = DB_SERVICE.get().unwrap();
+    let result = db_service
+        .db
+        .connect()
+        .expect("Failed to connect to db")
         .query("SELECT * FROM troy_status", libsql::params!())
         .await;
 
@@ -152,7 +172,7 @@ pub async fn set_troy_status(is_on_trail: bool) {
         Err(_) => 0,
     };
 
-    DB_SERVICE.lock().await
+    let _ = DB_SERVICE.get().unwrap()
             .execute(
                 "INSERT INTO troy_status (id, is_on_trail, trail_status_updated) \
                 VALUES (1, ?, ?) \
@@ -164,13 +184,16 @@ pub async fn set_troy_status(is_on_trail: bool) {
 
 pub async fn get_strava_auth() -> Option<TokenData> {
     let result = DB_SERVICE
-        .lock()
-        .await
-        .database
+        .get()
+        .unwrap()
+        .db
+        .connect()
+        .expect("Failed to connect to db")
         .query("SELECT * FROM strava_auth", libsql::params!())
         .await;
 
     if result.is_err() {
+        // let thing = result.unwrap_err().to_string();
         error!("Failed to get strava auth from db");
         return None;
     }
@@ -188,10 +211,10 @@ pub async fn get_strava_auth() -> Option<TokenData> {
     let result = result.unwrap();
 
     let access_token = result.get(1).unwrap_or("".into());
-    let access_token = decrypt(access_token).unwrap();
+    let access_token = decrypt(access_token).expect("Failed to decrypt access token");
 
     let refresh_token = result.get(2).unwrap_or("".into());
-    let refresh_token = decrypt(refresh_token).unwrap();
+    let refresh_token = decrypt(refresh_token).expect("Failed to decrypt refresh token");
 
     Some(TokenData {
         access_token,
@@ -213,7 +236,7 @@ pub async fn set_strava_auth(token_data: TokenData) {
         return;
     }
 
-    DB_SERVICE.lock().await.execute(
+    let _ = DB_SERVICE.get().unwrap().execute(
             "INSERT INTO strava_auth (id, access_token, refresh_token, expires_at) \
             VALUES (1, ?, ?, ?) \
             ON CONFLICT (id) \

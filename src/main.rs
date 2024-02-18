@@ -12,7 +12,10 @@ use axum::{
 };
 use lazy_static::lazy_static;
 use strava_api_service::StravaAPIService;
-use tokio::{sync::Mutex, time::Instant};
+use tokio::{
+    sync::{Mutex, OnceCell},
+    time::Instant,
+};
 use tower_http::compression::{
     predicate::{DefaultPredicate, NotForContentType, Predicate},
     CompressionLayer,
@@ -21,7 +24,7 @@ use tower_http::{
     services::{ServeDir, ServeFile},
     trace::TraceLayer,
 };
-use tracing::{debug, info};
+use tracing::{debug, info, Span};
 use tracing_subscriber::{
     filter::LevelFilter, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
 };
@@ -36,9 +39,10 @@ mod strava_api_service;
 mod utils;
 
 lazy_static! {
-    pub static ref DB_SERVICE: Mutex<DbService> = Mutex::new(DbService::new());
     pub static ref API_SERVICE: Mutex<StravaAPIService> = Mutex::new(StravaAPIService::new());
 }
+
+pub static DB_SERVICE: OnceCell<DbService> = OnceCell::const_new();
 
 #[derive(Default)]
 pub struct AppState {
@@ -63,8 +67,8 @@ async fn main() -> anyhow::Result<()> {
     debug!("initializing app state ...");
 
     {
-        let db_service = DB_SERVICE.lock().await;
-        db_service.init_tables().await;
+        let db = db_service::get_db_service().await;
+        db.init_tables().await;
     }
     {
         let mut strava_api_service = API_SERVICE.lock().await;
