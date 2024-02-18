@@ -50,12 +50,6 @@ pub async fn handler(Json(payload): Json<WebhookRequest>) -> impl axum::response
 }
 
 async fn send_discord_webhook(is_on_the_trails: bool) {
-    let content = if is_on_the_trails {
-        "Troy is on the trails!"
-    } else {
-        "Troy is no longer on the trails!"
-    };
-
     let strava_stats: Option<WebhookData> = match is_on_the_trails {
         true => None,
         false => {
@@ -105,10 +99,15 @@ async fn send_discord_webhook(is_on_the_trails: bool) {
     let message = &mut Message::new();
     message.username("TOTT").avatar_url(avatar_url);
     message.embed(|embed| {
-        embed.title(content).footer(
-            "Powered by troyonthetrails.com",
-            Some(avatar_url.to_string()),
-        );
+        embed
+            .title(match is_on_the_trails {
+                true => "Troy is on the trails!",
+                false => "Troy is no longer on the trails!",
+            })
+            .footer(
+                "Powered by troyonthetrails.com",
+                Some(avatar_url.to_string()),
+            );
 
         if let Some(webhook_data) = &strava_stats {
             embed
