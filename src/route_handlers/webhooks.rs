@@ -21,6 +21,7 @@ pub struct WebhookRequest {
 }
 
 struct WebhookData {
+    name: Option<String>,
     distance: f64,
     total_elevation_gain: f64,
     average_speed: f64,
@@ -50,12 +51,6 @@ pub async fn handler(Json(payload): Json<WebhookRequest>) -> impl axum::response
 }
 
 async fn send_discord_webhook(is_on_the_trails: bool) {
-    let content = if is_on_the_trails {
-        "Troy is on the trails!"
-    } else {
-        "Troy is no longer on the trails!"
-    };
-
     let strava_stats: Option<WebhookData> = match is_on_the_trails {
         true => None,
         false => {
@@ -75,12 +70,20 @@ async fn send_discord_webhook(is_on_the_trails: bool) {
                 }
 
                 Some(last_activity) => {
+                    let name = match last_activity.name.clone().as_str() {
+                        "Afternoon Mountain Bike Ride" => None,
+                        "Morning Mountain Bike Ride" => None,
+                        "Evening Mountain Bike Ride" => None,
+                        "Lunch Mountain Bike Ride" => None,
+                        _ => Some(last_activity.name),
+                    };
                     let distance = meters_to_miles(last_activity.distance, false);
                     let total_elevation_gain =
                         meters_to_feet(last_activity.total_elevation_gain, true);
                     let average_speed = mps_to_miph(last_activity.average_speed, false);
                     let max_speed = mps_to_miph(last_activity.max_speed, false);
                     Some(WebhookData {
+                        name,
                         distance,
                         total_elevation_gain,
                         average_speed,
@@ -105,12 +108,21 @@ async fn send_discord_webhook(is_on_the_trails: bool) {
     let message = &mut Message::new();
     message.username("TOTT").avatar_url(avatar_url);
     message.embed(|embed| {
-        embed.title(content).footer(
-            "Powered by troyonthetrails.com",
-            Some(avatar_url.to_string()),
-        );
+        embed
+            .title(match is_on_the_trails {
+                true => "Troy is on the trails!",
+                false => "Troy is no longer on the trails!",
+            })
+            .footer(
+                "Powered by troyonthetrails.com",
+                Some(avatar_url.to_string()),
+            );
 
         if let Some(webhook_data) = &strava_stats {
+            if let Some(name) = &webhook_data.name {
+                embed.description(name);
+            }
+
             embed
                 .field("Distance", &format!("{}mi", &webhook_data.distance), true)
                 .field(
