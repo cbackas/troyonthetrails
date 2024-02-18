@@ -88,7 +88,7 @@ impl DbService {
         let result = db.connect()?.execute(statement, params).await;
 
         if result.is_err() {
-            return Err(result.unwrap_err().into());
+            return Err(result.err().unwrap().into());
         }
 
         let result = result.unwrap();
