@@ -2,6 +2,11 @@ target/
 node_modules/
 strava_data/
 
+*.db
+*.db-shm
+*.db-wal
+client_wal_index
+
 *.env*
 
 assets/main.css
