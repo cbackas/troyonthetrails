@@ -10,3 +10,4 @@ client_wal_index
 *.env*
 
 assets/main.css
+assets/htmx.min.js
