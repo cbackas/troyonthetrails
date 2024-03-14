@@ -1,4 +1,10 @@
 {
+  "scripts": {
+    "postinstall": "cp ./node_modules/htmx.org/dist/htmx.min.js ./assets/htmx.min.js"
+  },
+    "dependencies": {
+    "htmx.org": "^1.9.10"
+  },
   "devDependencies": {
     "tailwindcss": "^3.3.3"
   }
