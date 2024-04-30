@@ -10,8 +10,6 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use lazy_static::lazy_static;
-use strava_api_service::StravaAPIService;
 use tokio::{
     sync::{Mutex, OnceCell},
     time::Instant,
@@ -30,17 +28,15 @@ use tracing_subscriber::{
 };
 
 use crate::db_service::DbService;
+use crate::strava::beacon::Status;
 
 mod db_service;
+mod discord;
 mod encryption;
 mod env_utils;
 mod route_handlers;
-mod strava_api_service;
+mod strava;
 mod utils;
-
-lazy_static! {
-    pub static ref API_SERVICE: Mutex<StravaAPIService> = Mutex::new(StravaAPIService::new());
-}
 
 pub static DB_SERVICE: OnceCell<DbService> = OnceCell::const_new();
 
@@ -70,10 +66,71 @@ async fn main() -> anyhow::Result<()> {
         let db = db_service::get_db_service().await;
         db.init_tables().await;
     }
-    {
-        let mut strava_api_service = API_SERVICE.lock().await;
-        strava_api_service.read_strava_auth_from_db().await;
-    }
+
+    tokio::spawn(async move {
+        loop {
+            let troy_status = db_service::get_troy_status().await;
+
+            let beacon_data = match troy_status.beacon_url {
+                Some(beacon_url) => match strava::beacon::get_beacon_data(beacon_url).await {
+                    Ok(data) => Some(data),
+                    Err(e) => {
+                        tracing::error!("Failed to get beacon data: {}", e);
+                        None
+                    }
+                },
+                None => None,
+            };
+            let activity_status = match beacon_data.clone() {
+                Some(data) => Some(data.status),
+                None => None,
+            };
+            let activity_id = match beacon_data {
+                Some(data) => match data.activity_id {
+                    Some(id) => Some(id),
+                    None => None,
+                },
+                None => None,
+            };
+
+            match activity_status {
+                Some(Status::Active | Status::AutoPaused | Status::ManualPaused) => {
+                    tracing::trace!("Beacon data indicates troy is active on the trails");
+                    db_service::set_troy_status(true).await;
+                    if !troy_status.is_on_trail {
+                        tracing::debug!("Troy status updated to on the trails");
+                        todo!("send discord webhook, ride started")
+                    }
+                }
+                Some(Status::Uploaded) => {
+                    tracing::info!("Beacon data indicates activity uploaded, clearing beacon url");
+                    db_service::set_beacon_url(None).await;
+                    if troy_status.is_on_trail {
+                        db_service::set_troy_status(false).await;
+                        discord::send_end_webhook(activity_id).await;
+                    }
+                }
+                Some(Status::Disgarded) => {
+                    tracing::warn!("Beacon data indicates activity was discarded, clearing troy status and beacon url");
+                    db_service::set_beacon_url(None).await;
+                    if troy_status.is_on_trail {
+                        db_service::set_troy_status(false).await;
+                        discord::send_starting_webhook().await;
+                    }
+                }
+                Some(Status::NotStarted) => {
+                    tracing::warn!("Beacon data indicates activity is not started yet");
+                    todo!("check if this beacon_url is old and maybe clear it");
+                }
+                None => {}
+                _ => {
+                    tracing::warn!("Beacon data indicates unknown status");
+                }
+            }
+
+            tokio::time::sleep(tokio::time::Duration::from_secs(45)).await;
+        }
+    });
 
     let port = crate::env_utils::get_port();
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
@@ -112,9 +169,7 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("error while starting API server")?;
 
-    info!("Server srarted");
-
-    anyhow::Ok(())
+    Ok(())
 }
 
 /**

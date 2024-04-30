@@ -9,13 +9,14 @@ use tracing::{debug, error, trace};
 
 use crate::{
     encryption::{decrypt, encrypt},
-    strava_api_service::TokenData,
+    strava::auth::TokenData,
     DB_SERVICE,
 };
 
 #[derive(Debug)]
 pub struct TroyStatus {
     pub is_on_trail: bool,
+    pub beacon_url: Option<String>,
     pub trail_status_updated: Option<SystemTime>,
 }
 
@@ -64,7 +65,7 @@ impl DbService {
         let conn = self.db.connect().expect("Failed to connect to db");
         let _ = conn
             .execute(
-                "CREATE TABLE IF NOT EXISTS troy_status (id INTEGER PRIMARY KEY CHECK (id = 1), is_on_trail INTEGER, trail_status_updated INTEGER)",
+                "CREATE TABLE IF NOT EXISTS troy_status (id INTEGER PRIMARY KEY CHECK (id = 1), is_on_trail INTEGER, beacon_url TEXT, trail_status_updated INTEGER)",
                 libsql::params!(),
             )
             .await;
@@ -74,6 +75,13 @@ impl DbService {
                 libsql::params!(),
             )
             .await;
+
+        // let _ = conn
+        //     .execute(
+        //         "ALTER TABLE troy_status ADD COLUMN beacon_url TEXT",
+        //         libsql::params!(),
+        //     )
+        //     .await;
     }
 
     // execute the statement and return the number of rows affected
@@ -123,6 +131,7 @@ pub async fn get_troy_status() -> TroyStatus {
         error!("Failed to get troy status from db");
         return TroyStatus {
             is_on_trail: false,
+            beacon_url: None,
             trail_status_updated: None,
         };
     }
@@ -136,6 +145,7 @@ pub async fn get_troy_status() -> TroyStatus {
         error!("Failed to get troy status from db, didn't find any rows",);
         return TroyStatus {
             is_on_trail: false,
+            beacon_url: None,
             trail_status_updated: None,
         };
     }
@@ -145,6 +155,7 @@ pub async fn get_troy_status() -> TroyStatus {
     struct TroyStatusRow {
         id: i64,
         is_on_trail: u8,
+        beacon_url: Option<String>,
         trail_status_updated: u64,
     }
 
@@ -154,6 +165,7 @@ pub async fn get_troy_status() -> TroyStatus {
 
     TroyStatus {
         is_on_trail: thing.is_on_trail == 1,
+        beacon_url: thing.beacon_url,
         trail_status_updated: Some(
             SystemTime::UNIX_EPOCH + Duration::from_secs(thing.trail_status_updated),
         ),
@@ -180,6 +192,21 @@ pub async fn set_troy_status(is_on_trail: bool) {
                 DO UPDATE SET is_on_trail = excluded.is_on_trail, trail_status_updated = excluded.trail_status_updated",
                 libsql::params!(is_on_trail, current_timestamp),
                 DBTable::TroyStatus).await;
+}
+
+pub async fn set_beacon_url(beacon_url: Option<String>) {
+    let _ = DB_SERVICE
+        .get()
+        .unwrap()
+        .execute(
+            "INSERT INTO troy_status (id, beacon_url) \
+                VALUES (1, ?) \
+                ON CONFLICT (id) \
+                DO UPDATE SET beacon_url = excluded.beacon_url",
+            libsql::params!(beacon_url),
+            DBTable::TroyStatus,
+        )
+        .await;
 }
 
 pub async fn get_strava_auth() -> Option<TokenData> {

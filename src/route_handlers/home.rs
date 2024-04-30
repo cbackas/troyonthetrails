@@ -1,6 +1,6 @@
 use crate::{
     db_service::{get_troy_status, set_troy_status},
-    API_SERVICE,
+    strava,
 };
 
 pub async fn handler() -> impl axum::response::IntoResponse {
@@ -24,8 +24,7 @@ pub async fn handler() -> impl axum::response::IntoResponse {
         }
     };
 
-    let api_service = API_SERVICE.lock().await;
-    let has_strava_token = api_service.token_data.is_some();
+    let has_strava_token = strava::auth::get_token().await.is_some();
 
     let template = HomeTemplate {
         last_updated,
