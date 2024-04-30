@@ -50,6 +50,8 @@ pub async fn get_token() -> Option<TokenData> {
     if let Some(data) = token_data {
         if data.expires_at >= chrono::Utc::now().timestamp() as u64 {
             return Some(data.clone());
+        } else {
+            tracing::warn!("Strava token has expired");
         }
     } else {
         return None;
