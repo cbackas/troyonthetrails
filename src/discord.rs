@@ -107,13 +107,15 @@ pub async fn send_starting_webhook() {
 
 pub async fn send_end_webhook(activity_id: Option<i64>) {
     let strava_stats: Option<WebhookData> = {
-        let last_activity: Option<Activity> = match strava::api_service::get_recent_activity().await
-        {
-            Ok(activity) => Some(activity),
-            Err(e) => {
-                tracing::error!("Failed to get last activity: {}", e);
-                None
-            }
+        let last_activity: Option<Activity> = match activity_id {
+            Some(activity_id) => match strava::api_service::get_activity(activity_id).await {
+                Ok(activity) => Some(activity),
+                Err(e) => {
+                    tracing::error!("Failed to get last activity: {}", e);
+                    None
+                }
+            },
+            None => None,
         };
 
         match last_activity {

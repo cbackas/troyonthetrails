@@ -171,31 +171,20 @@ pub async fn get_athlete_stats() -> anyhow::Result<StravaData> {
     }
 }
 
-pub async fn get_recent_activity() -> anyhow::Result<Activity> {
-    let resp =
-        get_strava_data("https://www.strava.com/api/v3/athlete/activities?per_page=1".to_string())
-            .await?;
+pub async fn get_activity(activity_id: i64) -> anyhow::Result<Activity> {
+    let resp = get_strava_data(format!(
+        "https://www.strava.com/api/v3/activities/{}",
+        activity_id
+    ))
+    .await?;
 
     if resp.status().is_success() {
         let text = resp.text().await.context("Failed to get strava data")?;
 
-        let strava_data: Vec<Activity> =
+        let activity: Activity =
             serde_json::from_str(&text).context("Failed to deserialize JSON")?;
-        let activity = match strava_data.first() {
-            Some(activity) => Ok(activity.clone()),
-            None => Err(anyhow::anyhow!("No activities found")),
-        }?;
 
-        let now = chrono::Utc::now();
-        let last_activity_time = chrono::DateTime::parse_from_rfc3339(&activity.start_date)
-            .unwrap()
-            .with_timezone(&chrono::Utc);
-        let time_since_last_activity = now - last_activity_time;
-        if time_since_last_activity.num_hours() < 4 {
-            Ok(activity)
-        } else {
-            Err(anyhow::anyhow!("No activities found"))
-        }
+        Ok(activity)
     } else {
         Err(anyhow::anyhow!(
             "Received a non-success status code {}: {}",
