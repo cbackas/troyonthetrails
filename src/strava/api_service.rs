@@ -156,7 +156,7 @@ pub async fn get_athlete_stats() -> anyhow::Result<StravaData> {
         let strava_data: StravaData =
             serde_json::from_str(&text).context("Failed to deserialize JSON")?;
 
-        CACHED_DATA.set(StravaDataCache {
+        let _ = CACHED_DATA.set(StravaDataCache {
             strava_athlete_stats: strava_data.clone(),
             strava_athlete_stats_updated: Instant::now(),
         });

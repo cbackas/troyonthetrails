@@ -71,7 +71,7 @@ pub async fn get_token() -> Option<TokenData> {
         }
     };
 
-    TOKEN_DATA.set(token_data.clone());
+    let _ = TOKEN_DATA.set(token_data.clone());
 
     token_data
 }
@@ -121,7 +121,7 @@ pub async fn get_token_from_code(code: String) -> anyhow::Result<()> {
 
         let strava_data: TokenData = strava_data.into();
 
-        TOKEN_DATA.set(Some(strava_data.clone().into()));
+        let _ = TOKEN_DATA.set(Some(strava_data.clone().into()));
 
         db_service::set_strava_auth(strava_data).await;
 
