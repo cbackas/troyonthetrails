@@ -99,7 +99,7 @@ async fn main() -> anyhow::Result<()> {
                     db_service::set_troy_status(true).await;
                     if !troy_status.is_on_trail {
                         tracing::debug!("Troy status updated to on the trails");
-                        todo!("send discord webhook, ride started")
+                        discord::send_starting_webhook().await;
                     }
                 }
                 Some(Status::Uploaded) => {
@@ -115,7 +115,7 @@ async fn main() -> anyhow::Result<()> {
                     db_service::set_beacon_url(None).await;
                     if troy_status.is_on_trail {
                         db_service::set_troy_status(false).await;
-                        discord::send_starting_webhook().await;
+                        todo!("send discord webhook");
                     }
                 }
                 Some(Status::NotStarted) => {
