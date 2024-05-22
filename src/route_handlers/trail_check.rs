@@ -109,14 +109,17 @@ pub async fn handler(
     };
 
     let trail_data = sort_trail_data(trail_data);
+
+    let template = TrailCheckTemplate {
+        trails: trail_data.clone(),
+    };
+
     // update the cached trail data
     {
         let mut state = state.lock().await;
-        state.trail_data = trail_data.clone();
+        state.trail_data = trail_data;
         state.trail_data_last_updated = Some(tokio::time::Instant::now());
     }
-
-    let template = TrailCheckTemplate { trails: trail_data };
 
     super::html_template::HtmlTemplate(template)
 }
