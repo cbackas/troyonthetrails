@@ -5,7 +5,7 @@ use std::{
 };
 
 use libsql::params::IntoParams;
-use tracing::{debug, error, trace};
+use tracing;
 
 use crate::{
     encryption::{decrypt, encrypt},
@@ -45,11 +45,11 @@ pub async fn get_db_service() -> &'static DbService {
             .await
             .expect("Failed to create database");
 
-            debug!("Initialized db");
+            tracing::debug!("Initialized db");
 
             let _ = db.sync().await.expect("Failed to sync db");
 
-            trace!("Synced remote db to local disk");
+            tracing::trace!("Synced remote db to local disk");
 
             DbService { db }
         })
@@ -76,12 +76,12 @@ impl DbService {
             )
             .await;
 
-        // let _ = conn
-        //     .execute(
-        //         "ALTER TABLE troy_status ADD COLUMN beacon_url TEXT",
-        //         libsql::params!(),
-        //     )
-        //     .await;
+        let _ = conn
+            .execute(
+                "ALTER TABLE troy_status ADD COLUMN beacon_url TEXT",
+                libsql::params!(),
+            )
+            .await;
     }
 
     // execute the statement and return the number of rows affected
@@ -101,7 +101,7 @@ impl DbService {
 
         let result = result.unwrap();
         if result == 0 {
-            error!(
+            tracing::error!(
                 "Failed to to db, expected 1 row affected but got {}",
                 result
             );
@@ -111,7 +111,7 @@ impl DbService {
             ));
         }
 
-        debug!("{} upserted to db", table);
+        tracing::debug!("{} upserted to db", table);
 
         let _sync = db.sync().await?;
         Ok(result)
@@ -128,7 +128,7 @@ pub async fn get_troy_status() -> TroyStatus {
         .await;
 
     if result.is_err() {
-        error!("Failed to get troy status from db");
+        tracing::error!("Failed to get troy status from db");
         return TroyStatus {
             is_on_trail: false,
             beacon_url: None,
@@ -142,7 +142,7 @@ pub async fn get_troy_status() -> TroyStatus {
     };
 
     if result.is_none() {
-        error!("Failed to get troy status from db, didn't find any rows",);
+        tracing::error!("Failed to get troy status from db, didn't find any rows",);
         return TroyStatus {
             is_on_trail: false,
             beacon_url: None,
@@ -221,7 +221,7 @@ pub async fn get_strava_auth() -> Option<TokenData> {
 
     if result.is_err() {
         // let thing = result.unwrap_err().to_string();
-        error!("Failed to get strava auth from db");
+        tracing::error!("Failed to get strava auth from db");
         return None;
     }
 
@@ -231,7 +231,7 @@ pub async fn get_strava_auth() -> Option<TokenData> {
     };
 
     if result.is_none() {
-        error!("Failed to get strava auth from db, expected 1 row but found none");
+        tracing::error!("Failed to get strava auth from db, expected 1 row but found none");
         return None;
     }
 
@@ -253,13 +253,13 @@ pub async fn get_strava_auth() -> Option<TokenData> {
 pub async fn set_strava_auth(token_data: TokenData) {
     let access_token = encrypt(token_data.access_token);
     if let Err(error) = access_token {
-        error!("Failed to encrypt access token {:?}", error);
+        tracing::error!("Failed to encrypt access token {:?}", error);
         return;
     }
 
     let refresh_token = encrypt(token_data.refresh_token);
     if let Err(error) = refresh_token {
-        error!("Failed to encrypt refresh token {:?}", error);
+        tracing::error!("Failed to encrypt refresh token {:?}", error);
         return;
     }
 
