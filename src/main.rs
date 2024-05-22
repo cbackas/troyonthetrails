@@ -81,16 +81,10 @@ async fn main() -> anyhow::Result<()> {
                 },
                 None => None,
             };
-            let activity_status = match beacon_data.clone() {
-                Some(data) => Some(data.status),
-                None => None,
-            };
-            let activity_id = match beacon_data {
-                Some(data) => match data.activity_id {
-                    Some(id) => Some(id),
-                    None => None,
-                },
-                None => None,
+
+            let (activity_status, activity_id) = match beacon_data.clone() {
+                Some(data) => (Some(data.status), data.activity_id),
+                None => (None, None),
             };
 
             match activity_status {
@@ -98,7 +92,7 @@ async fn main() -> anyhow::Result<()> {
                     tracing::trace!("Beacon data indicates troy is active on the trails");
                     db_service::set_troy_status(true).await;
                     if !troy_status.is_on_trail {
-                        tracing::debug!("Troy status updated to on the trails");
+                        tracing::info!("Troy status updated to on the trails");
                         discord::send_starting_webhook().await;
                     }
                 }
@@ -111,7 +105,7 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
                 Some(Status::Dicarded) => {
-                    tracing::warn!("Beacon data indicates activity was discarded, clearing troy status and beacon url");
+                    tracing::info!("Beacon data indicates activity was discarded, clearing troy status and beacon url");
                     db_service::set_beacon_url(None).await;
                     if troy_status.is_on_trail {
                         db_service::set_troy_status(false).await;
@@ -119,8 +113,19 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
                 Some(Status::NotStarted) => {
-                    tracing::warn!("Beacon data indicates activity is not started yet");
-                    todo!("check if this beacon_url is old and maybe clear it");
+                    tracing::info!("Beacon data indicates activity is not started yet");
+                    let diff = {
+                        let update_time = beacon_data.unwrap().update_time;
+                        let update_time = update_time.datetime();
+                        let now = chrono::Utc::now();
+                        now - update_time
+                    };
+                    if diff.num_minutes() > 45 {
+                        tracing::info!(
+                            "Beacon data is old and activity never started, clearing beacon url"
+                        );
+                        db_service::set_beacon_url(None).await;
+                    }
                 }
                 None => {}
                 _ => {

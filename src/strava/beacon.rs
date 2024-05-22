@@ -1,11 +1,17 @@
-use serde::{Deserialize, Serialize};
+use core::fmt;
+
+use chrono::{DateTime, TimeZone, Utc};
+use serde::{
+    de::{self, Visitor},
+    Deserialize, Deserializer, Serialize, Serializer,
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BeaconData {
     pub streams: Streams,
     pub live_activity_id: i64,
     pub athlete_id: i64,
-    pub update_time: i64,
+    pub update_time: EpochDateTime,
     pub utc_offset: i64,
     pub activity_type: i64,
     pub status: Status,
@@ -66,6 +72,64 @@ impl Into<i64> for Status {
             Status::Dicarded => 6,
             Status::NotStarted => 7,
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EpochDateTime(DateTime<Utc>);
+
+impl EpochDateTime {
+    pub fn new(epoch: i64) -> Self {
+        let thing = Utc.timestamp_opt(epoch, 0);
+        EpochDateTime(thing.unwrap())
+    }
+
+    pub fn datetime(&self) -> &DateTime<Utc> {
+        &self.0
+    }
+}
+
+// Custom serialization for EpochDateTime
+impl Serialize for EpochDateTime {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_i64(self.0.timestamp())
+    }
+}
+
+// Custom deserialization for EpochDateTime
+impl<'de> Deserialize<'de> for EpochDateTime {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct EpochDateTimeVisitor;
+
+        impl<'de> Visitor<'de> for EpochDateTimeVisitor {
+            type Value = EpochDateTime;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("an integer representing an epoch timestamp")
+            }
+
+            fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(EpochDateTime::new(value))
+            }
+
+            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(EpochDateTime::new(value as i64))
+            }
+        }
+
+        deserializer.deserialize_i64(EpochDateTimeVisitor)
     }
 }
 
