@@ -23,19 +23,11 @@ struct WebhookData {
 
 impl Into<Embed> for TOTTWebhook {
     fn into(self) -> Embed {
-        let host_uri = crate::env_utils::get_host_uri();
-        let avatar_url = &format!("{}/assets/android-chrome-192x192.png", host_uri);
-
-        let mut embed: Embed = Embed::new();
-        embed
-            .title(match self.troy_status {
-                true => "Troy is on the trails!",
-                false => "Troy is no longer on the trails!",
-            })
-            .footer(
-                "Powered by troyonthetrails.com",
-                Some(avatar_url.to_string()),
-            );
+        let mut embed: Embed = get_embed();
+        embed.title(match self.troy_status {
+            true => "Troy is on the trails!",
+            false => "Troy is no longer on the trails!",
+        });
 
         if let Some(webhook_data) = &self.webhook_data {
             if let Some(name) = &webhook_data.name {
@@ -82,18 +74,6 @@ impl Into<Message> for TOTTWebhook {
     }
 }
 
-fn get_embed() -> Embed {
-    let host_uri = crate::env_utils::get_host_uri();
-    let avatar_url = &format!("{}/assets/android-chrome-192x192.png", host_uri);
-
-    let mut embed: Embed = Embed::new();
-    embed.footer(
-        "Powered by troyonthetrails.com",
-        Some(avatar_url.to_string()),
-    );
-    embed
-}
-
 struct StringMessage(String);
 
 impl Into<Message> for StringMessage {
@@ -114,6 +94,18 @@ impl Into<Message> for StringMessage {
             action_rows: vec![],
         }
     }
+}
+
+fn get_embed() -> Embed {
+    let host_uri = crate::env_utils::get_host_uri();
+    let avatar_url = &format!("{}/assets/android-chrome-192x192.png", host_uri);
+
+    let mut embed: Embed = Embed::new();
+    embed.footer(
+        "Powered by troyonthetrails.com",
+        Some(avatar_url.to_string()),
+    );
+    embed
 }
 
 async fn send_webhook(webhook_data: impl Into<Message>) {
