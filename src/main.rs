@@ -10,8 +10,6 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use lazy_static::lazy_static;
-use strava_api_service::StravaAPIService;
 use tokio::{
     sync::{Mutex, OnceCell},
     time::Instant,
@@ -31,16 +29,14 @@ use tracing_subscriber::{
 
 use crate::db_service::DbService;
 
+mod beacon_loop;
 mod db_service;
+mod discord;
 mod encryption;
 mod env_utils;
 mod route_handlers;
-mod strava_api_service;
+mod strava;
 mod utils;
-
-lazy_static! {
-    pub static ref API_SERVICE: Mutex<StravaAPIService> = Mutex::new(StravaAPIService::new());
-}
 
 pub static DB_SERVICE: OnceCell<DbService> = OnceCell::const_new();
 
@@ -70,10 +66,14 @@ async fn main() -> anyhow::Result<()> {
         let db = db_service::get_db_service().await;
         db.init_tables().await;
     }
-    {
-        let mut strava_api_service = API_SERVICE.lock().await;
-        strava_api_service.read_strava_auth_from_db().await;
-    }
+
+    // loop that continuously checks the db for a beacon url and processes the data if found
+    tokio::spawn(async move {
+        loop {
+            beacon_loop::process_beacon().await;
+            tokio::time::sleep(tokio::time::Duration::from_secs(45)).await;
+        }
+    });
 
     let port = crate::env_utils::get_port();
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
@@ -112,9 +112,7 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("error while starting API server")?;
 
-    info!("Server srarted");
-
-    anyhow::Ok(())
+    Ok(())
 }
 
 /**

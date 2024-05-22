@@ -3,7 +3,7 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 use tracing::{debug, error};
 
-use crate::API_SERVICE;
+use crate::strava;
 
 #[derive(Deserialize)]
 #[serde(untagged)]
@@ -37,8 +37,7 @@ pub async fn handler(parameters: Option<Query<StravaCallbackParams>>) -> impl In
                 scope: _,
                 state: _,
             } => {
-                let mut api_service = API_SERVICE.lock().await;
-                match api_service.get_token_from_code(code.clone()).await {
+                match strava::auth::get_token_from_code(code.clone()).await {
                     Ok(()) => {}
                     Err(err) => {
                         error!("Failed to get strava token: {}", err);
