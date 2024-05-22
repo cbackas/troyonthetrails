@@ -21,49 +21,88 @@ struct WebhookData {
     max_speed: f64,
 }
 
-impl Into<webhook::models::Message> for TOTTWebhook {
+impl Into<Embed> for TOTTWebhook {
+    fn into(self) -> Embed {
+        let host_uri = crate::env_utils::get_host_uri();
+        let avatar_url = &format!("{}/assets/android-chrome-192x192.png", host_uri);
+
+        let mut embed: Embed = Embed::new();
+        embed
+            .title(match self.troy_status {
+                true => "Troy is on the trails!",
+                false => "Troy is no longer on the trails!",
+            })
+            .footer(
+                "Powered by troyonthetrails.com",
+                Some(avatar_url.to_string()),
+            );
+
+        if let Some(webhook_data) = &self.webhook_data {
+            if let Some(name) = &webhook_data.name {
+                embed.description(name);
+            }
+
+            embed
+                .field("Distance", &format!("{}mi", &webhook_data.distance), true)
+                .field(
+                    "Elevation Gain",
+                    &format!("{}ft", &webhook_data.total_elevation_gain),
+                    true,
+                )
+                .field(
+                    "Average Speed",
+                    &format!("{}mph", &webhook_data.average_speed),
+                    true,
+                )
+                .field(
+                    "Top Speed",
+                    &format!("{}mph", &webhook_data.max_speed),
+                    true,
+                );
+        };
+
+        embed
+    }
+}
+
+impl Into<Message> for TOTTWebhook {
     fn into(self) -> webhook::models::Message {
         let host_uri = crate::env_utils::get_host_uri();
         let avatar_url = &format!("{}/assets/android-chrome-192x192.png", host_uri);
 
-        let embed = {
-            let mut embed: Embed = Embed::new();
-            embed
-                .title(match self.troy_status {
-                    true => "Troy is on the trails!",
-                    false => "Troy is no longer on the trails!",
-                })
-                .footer(
-                    "Powered by troyonthetrails.com",
-                    Some(avatar_url.to_string()),
-                );
+        Message {
+            content: None,
+            username: Some("TOTT".to_string()),
+            avatar_url: Some(avatar_url.to_string()),
+            tts: false,
+            embeds: vec![self.into()],
+            allow_mentions: None,
+            action_rows: vec![],
+        }
+    }
+}
 
-            if let Some(webhook_data) = &self.webhook_data {
-                if let Some(name) = &webhook_data.name {
-                    embed.description(name);
-                }
+fn get_embed() -> Embed {
+    let host_uri = crate::env_utils::get_host_uri();
+    let avatar_url = &format!("{}/assets/android-chrome-192x192.png", host_uri);
 
-                embed
-                    .field("Distance", &format!("{}mi", &webhook_data.distance), true)
-                    .field(
-                        "Elevation Gain",
-                        &format!("{}ft", &webhook_data.total_elevation_gain),
-                        true,
-                    )
-                    .field(
-                        "Average Speed",
-                        &format!("{}mph", &webhook_data.average_speed),
-                        true,
-                    )
-                    .field(
-                        "Top Speed",
-                        &format!("{}mph", &webhook_data.max_speed),
-                        true,
-                    );
-            };
+    let mut embed: Embed = Embed::new();
+    embed.footer(
+        "Powered by troyonthetrails.com",
+        Some(avatar_url.to_string()),
+    );
+    embed
+}
 
-            embed
-        };
+struct StringMessage(String);
+
+impl Into<Message> for StringMessage {
+    fn into(self) -> Message {
+        let host_uri = crate::env_utils::get_host_uri();
+        let avatar_url = &format!("{}/assets/android-chrome-192x192.png", host_uri);
+
+        let mut embed: Embed = get_embed();
+        embed.title(&self.0);
 
         Message {
             content: None,
@@ -77,7 +116,7 @@ impl Into<webhook::models::Message> for TOTTWebhook {
     }
 }
 
-async fn send_webhook(webhook_data: TOTTWebhook) {
+async fn send_webhook(webhook_data: impl Into<Message>) {
     let webhook_url = match std::env::var("DISCORD_WEBHOOK_URL") {
         Ok(url) => url,
         Err(_) => {
@@ -107,7 +146,7 @@ pub async fn send_starting_webhook() {
 
 pub async fn send_end_webhook(activity_id: Option<i64>) {
     let strava_stats: Option<WebhookData> = {
-        let last_activity: Option<Activity> = match activity_id {
+        let activity: Option<Activity> = match activity_id {
             Some(activity_id) => match strava::api_service::get_activity(activity_id).await {
                 Ok(activity) => Some(activity),
                 Err(e) => {
@@ -118,25 +157,25 @@ pub async fn send_end_webhook(activity_id: Option<i64>) {
             None => None,
         };
 
-        match last_activity {
+        match activity {
             None => {
                 tracing::error!("No last activity found");
                 None
             }
 
-            Some(last_activity) => {
-                let name = match last_activity.name.clone().as_str() {
+            Some(activity) => {
+                let name = match activity.name.clone().as_str() {
                     "Afternoon Mountain Bike Ride" => None,
                     "Morning Mountain Bike Ride" => None,
                     "Evening Mountain Bike Ride" => None,
                     "Lunch Mountain Bike Ride" => None,
-                    _ => Some(last_activity.name),
+                    _ => Some(activity.name),
                 };
-                let distance = utils::meters_to_miles(last_activity.distance, false);
+                let distance = utils::meters_to_miles(activity.distance, false);
                 let total_elevation_gain =
-                    utils::meters_to_feet(last_activity.total_elevation_gain, true);
-                let average_speed = utils::mps_to_miph(last_activity.average_speed, false);
-                let max_speed = utils::mps_to_miph(last_activity.max_speed, false);
+                    utils::meters_to_feet(activity.total_elevation_gain, true);
+                let average_speed = utils::mps_to_miph(activity.average_speed, false);
+                let max_speed = utils::mps_to_miph(activity.max_speed, false);
                 Some(WebhookData {
                     name,
                     distance,
@@ -152,5 +191,12 @@ pub async fn send_end_webhook(activity_id: Option<i64>) {
         troy_status: false,
         webhook_data: strava_stats,
     })
+    .await;
+}
+
+pub async fn send_discard_webhook() {
+    send_webhook(StringMessage(
+        "Troy has discarded the Strava activity".to_string(),
+    ))
     .await;
 }

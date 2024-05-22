@@ -36,7 +36,7 @@ pub enum Status {
     AutoPaused,
     ManualPaused,
     Uploaded,
-    Disgarded,
+    Dicarded,
     NotStarted,
 }
 
@@ -48,7 +48,7 @@ impl From<i64> for Status {
             3 => Status::ManualPaused,
             4 => Status::Unknown,
             5 => Status::Uploaded,
-            6 => Status::Disgarded,
+            6 => Status::Dicarded,
             7 => Status::NotStarted,
             _ => Status::Unknown,
         }
@@ -63,7 +63,7 @@ impl Into<i64> for Status {
             Status::ManualPaused => 3,
             Status::Unknown => 4,
             Status::Uploaded => 5,
-            Status::Disgarded => 6,
+            Status::Dicarded => 6,
             Status::NotStarted => 7,
         }
     }

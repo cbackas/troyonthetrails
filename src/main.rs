@@ -110,12 +110,12 @@ async fn main() -> anyhow::Result<()> {
                         discord::send_end_webhook(activity_id).await;
                     }
                 }
-                Some(Status::Disgarded) => {
+                Some(Status::Dicarded) => {
                     tracing::warn!("Beacon data indicates activity was discarded, clearing troy status and beacon url");
                     db_service::set_beacon_url(None).await;
                     if troy_status.is_on_trail {
                         db_service::set_troy_status(false).await;
-                        todo!("send discord webhook");
+                        discord::send_discard_webhook().await;
                     }
                 }
                 Some(Status::NotStarted) => {
