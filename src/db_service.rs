@@ -5,7 +5,6 @@ use std::{
 };
 
 use libsql::params::IntoParams;
-use tracing;
 
 use crate::{
     encryption::{decrypt, encrypt},

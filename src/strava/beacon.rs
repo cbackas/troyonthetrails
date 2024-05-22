@@ -61,9 +61,9 @@ impl From<i64> for Status {
     }
 }
 
-impl Into<i64> for Status {
-    fn into(self) -> i64 {
-        match self {
+impl From<Status> for i64 {
+    fn from(val: Status) -> Self {
+        match val {
             Status::Active => 1,
             Status::AutoPaused => 2,
             Status::ManualPaused => 3,

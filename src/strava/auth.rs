@@ -16,12 +16,12 @@ pub struct StravaTokenResponse {
     pub athlete: Option<Athlete>,
 }
 
-impl Into<TokenData> for StravaTokenResponse {
-    fn into(self) -> TokenData {
+impl From<StravaTokenResponse> for TokenData {
+    fn from(val: StravaTokenResponse) -> Self {
         TokenData {
-            expires_at: self.expires_at,
-            access_token: self.access_token,
-            refresh_token: self.refresh_token,
+            expires_at: val.expires_at,
+            access_token: val.access_token,
+            refresh_token: val.refresh_token,
         }
     }
 }
@@ -121,7 +121,7 @@ pub async fn get_token_from_code(code: String) -> anyhow::Result<()> {
 
         let strava_data: TokenData = strava_data.into();
 
-        let _ = TOKEN_DATA.set(Some(strava_data.clone().into()));
+        let _ = TOKEN_DATA.set(Some(strava_data.clone()));
 
         db_service::set_strava_auth(strava_data).await;
 

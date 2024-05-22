@@ -21,15 +21,15 @@ struct WebhookData {
     max_speed: f64,
 }
 
-impl Into<Embed> for TOTTWebhook {
-    fn into(self) -> Embed {
+impl From<TOTTWebhook> for Embed {
+    fn from(val: TOTTWebhook) -> Self {
         let mut embed: Embed = get_embed();
-        embed.title(match self.troy_status {
+        embed.title(match val.troy_status {
             true => "Troy is on the trails!",
             false => "Troy is no longer on the trails!",
         });
 
-        if let Some(webhook_data) = &self.webhook_data {
+        if let Some(webhook_data) = &val.webhook_data {
             if let Some(name) = &webhook_data.name {
                 embed.description(name);
             }
@@ -57,8 +57,8 @@ impl Into<Embed> for TOTTWebhook {
     }
 }
 
-impl Into<Message> for TOTTWebhook {
-    fn into(self) -> webhook::models::Message {
+impl From<TOTTWebhook> for Message {
+    fn from(val: TOTTWebhook) -> Self {
         let host_uri = crate::env_utils::get_host_uri();
         let avatar_url = &format!("{}/assets/android-chrome-192x192.png", host_uri);
 
@@ -67,7 +67,7 @@ impl Into<Message> for TOTTWebhook {
             username: Some("TOTT".to_string()),
             avatar_url: Some(avatar_url.to_string()),
             tts: false,
-            embeds: vec![self.into()],
+            embeds: vec![val.into()],
             allow_mentions: None,
             action_rows: vec![],
         }
@@ -76,13 +76,13 @@ impl Into<Message> for TOTTWebhook {
 
 struct StringMessage(String);
 
-impl Into<Message> for StringMessage {
-    fn into(self) -> Message {
+impl From<StringMessage> for Message {
+    fn from(val: StringMessage) -> Self {
         let host_uri = crate::env_utils::get_host_uri();
         let avatar_url = &format!("{}/assets/android-chrome-192x192.png", host_uri);
 
         let mut embed: Embed = get_embed();
-        embed.title(&self.0);
+        embed.title(&val.0);
 
         Message {
             content: None,
