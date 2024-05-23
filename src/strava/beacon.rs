@@ -23,7 +23,9 @@ pub struct BeaconData {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Streams {
+    #[serde(default)]
     pub timestamp: Vec<i64>,
+    #[serde(default)]
     pub latlng: Vec<Vec<f64>>,
 }
 
