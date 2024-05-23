@@ -110,7 +110,7 @@ impl DbService {
             ));
         }
 
-        tracing::debug!("{} upserted to db", table);
+        tracing::trace!("{} upserted to db", table);
 
         let _sync = db.sync().await?;
         Ok(result)
@@ -183,6 +183,8 @@ pub async fn set_troy_status(is_on_trail: bool) {
         Err(_) => 0,
     };
 
+    tracing::debug!("Updating troy status in the DB to {}", is_on_trail);
+
     let _ = DB_SERVICE.get().unwrap()
             .execute(
                 "INSERT INTO troy_status (id, is_on_trail, trail_status_updated) \
@@ -194,6 +196,7 @@ pub async fn set_troy_status(is_on_trail: bool) {
 }
 
 pub async fn set_beacon_url(beacon_url: Option<String>) {
+    tracing::debug!("Updating beacon url in the DB to {:?}", beacon_url);
     let _ = DB_SERVICE
         .get()
         .unwrap()
@@ -231,6 +234,7 @@ pub async fn get_strava_auth() -> Option<TokenData> {
 
     if result.is_none() {
         tracing::error!("Failed to get strava auth from db, expected 1 row but found none");
+
         return None;
     }
 
@@ -261,6 +265,8 @@ pub async fn set_strava_auth(token_data: TokenData) {
         tracing::error!("Failed to encrypt refresh token {:?}", error);
         return;
     }
+
+    tracing::debug!("Updating strava auth in the DB");
 
     let _ = DB_SERVICE.get().unwrap().execute(
             "INSERT INTO strava_auth (id, access_token, refresh_token, expires_at) \

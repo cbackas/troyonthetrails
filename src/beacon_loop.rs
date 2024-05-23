@@ -6,6 +6,14 @@ use crate::{
 pub async fn process_beacon() {
     let troy_status = db_service::get_troy_status().await;
 
+    if troy_status.beacon_url.is_none() && troy_status.is_on_trail {
+        tracing::warn!(
+            "Troy status indicates on the trails but no beacon url found, clearing troy status"
+        );
+        db_service::set_troy_status(false).await;
+        return;
+    }
+
     let beacon_data = match troy_status.beacon_url {
         Some(beacon_url) => match strava::beacon::get_beacon_data(beacon_url).await {
             Ok(data) => Some(data),
