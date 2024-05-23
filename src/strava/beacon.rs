@@ -16,7 +16,7 @@ pub struct BeaconData {
     pub activity_type: i64,
     pub status: Status,
     pub stats: Stats,
-    pub battery_level: i64,
+    pub battery_level: Option<i64>,
     pub source_app: String,
     pub activity_id: Option<i64>,
 }
