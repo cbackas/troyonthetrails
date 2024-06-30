@@ -246,10 +246,17 @@ pub async fn get_strava_auth() -> Option<TokenData> {
     let refresh_token = result.get(2).unwrap_or("".into());
     let refresh_token = decrypt(refresh_token).expect("Failed to decrypt refresh token");
 
+    let expires_at = result.get(3);
+    if expires_at.is_err() {
+        tracing::error!("Failed to get expires_at from db: {:?}", expires_at);
+        return None;
+    }
+    let expires_at = expires_at.unwrap();
+
     Some(TokenData {
         access_token,
         refresh_token,
-        expires_at: result.get(3).unwrap_or(0),
+        expires_at,
     })
 }
 
