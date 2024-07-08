@@ -241,10 +241,22 @@ pub async fn get_strava_auth() -> Option<TokenData> {
     let result = result.unwrap();
 
     let access_token = result.get(1).unwrap_or("".into());
-    let access_token = decrypt(access_token).expect("Failed to decrypt access token");
+    let access_token = match decrypt(access_token) {
+        Ok(token) => token,
+        Err(e) => {
+            tracing::error!("Failed to decrypt access token: {}", e);
+            return None;
+        }
+    };
 
     let refresh_token = result.get(2).unwrap_or("".into());
-    let refresh_token = decrypt(refresh_token).expect("Failed to decrypt refresh token");
+    let refresh_token = match decrypt(refresh_token) {
+        Ok(token) => token,
+        Err(e) => {
+            tracing::error!("Failed to decrypt refresh token: {}", e);
+            return None;
+        }
+    };
 
     let expires_at = result.get(3);
     if expires_at.is_err() {

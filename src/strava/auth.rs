@@ -8,9 +8,9 @@ use super::api_service::Athlete;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct StravaTokenResponse {
-    pub token_type: String,
+    pub _token_type: String,
     pub expires_at: u64,
-    pub expires_in: u64,
+    pub _expires_in: u64,
     pub refresh_token: String,
     pub access_token: String,
     pub athlete: Option<Athlete>,
