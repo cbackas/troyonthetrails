@@ -17,25 +17,25 @@ use super::auth;
 pub struct StravaTotals {
     pub count: u32,
     pub distance: f64,
-    pub moving_time: u64,
-    pub elapsed_time: u64,
+    pub _moving_time: u64,
+    pub _elapsed_time: u64,
     pub elevation_gain: f64,
-    pub achievement_count: Option<u32>,
+    pub _achievement_count: Option<u32>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct StravaData {
     pub biggest_ride_distance: f64,
-    pub biggest_climb_elevation_gain: Option<f64>,
-    pub recent_ride_totals: StravaTotals,
+    pub _biggest_climb_elevation_gain: Option<f64>,
+    pub _recent_ride_totals: StravaTotals,
     pub all_ride_totals: StravaTotals,
-    pub recent_run_totals: StravaTotals,
-    pub all_run_totals: StravaTotals,
-    pub recent_swim_totals: StravaTotals,
-    pub all_swim_totals: StravaTotals,
-    pub ytd_ride_totals: StravaTotals,
-    pub ytd_run_totals: StravaTotals,
-    pub ytd_swim_totals: StravaTotals,
+    pub _recent_run_totals: StravaTotals,
+    pub _all_run_totals: StravaTotals,
+    pub _recent_swim_totals: StravaTotals,
+    pub _all_swim_totals: StravaTotals,
+    pub _ytd_ride_totals: StravaTotals,
+    pub _ytd_run_totals: StravaTotals,
+    pub _ytd_swim_totals: StravaTotals,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]

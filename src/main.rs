@@ -67,13 +67,7 @@ async fn main() -> anyhow::Result<()> {
         db.init_tables().await;
     }
 
-    // loop that continuously checks the db for a beacon url and processes the data if found
-    tokio::spawn(async move {
-        loop {
-            beacon_loop::process_beacon().await;
-            tokio::time::sleep(tokio::time::Duration::from_secs(45)).await;
-        }
-    });
+    run_beacon_loop();
 
     let port = crate::env_utils::get_port();
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
@@ -187,4 +181,32 @@ async fn uri_middleware<B>(request: Request<B>, next: Next<B>) -> Response {
     response.extensions_mut().insert(RequestUri(uri));
 
     response
+}
+
+// loop that continuously checks the db for a beacon url and processes the data if found
+fn run_beacon_loop() {
+    match (std::env::var("FLY_REGION"), std::env::var("PRIMARY_REGION")) {
+        (Ok(fly_region), Ok(primary_region)) => {
+            if fly_region == primary_region {
+                tracing::info!("Beacon loop running in region: {}", fly_region);
+            } else {
+                tracing::trace!(
+                    "Fly region ({}) and primary region ({}) do not match, skipping beacon loop",
+                    fly_region,
+                    primary_region
+                );
+                return;
+            }
+        }
+        _ => {
+            tracing::warn!("FLY_REGION and PRIMARY_REGION are not both set, running beacon loop");
+        }
+    }
+
+    tokio::spawn(async move {
+        loop {
+            beacon_loop::process_beacon().await;
+            tokio::time::sleep(tokio::time::Duration::from_secs(45)).await;
+        }
+    });
 }

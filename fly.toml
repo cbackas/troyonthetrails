@@ -16,6 +16,7 @@ primary_region = "ord"
 [env]
   HOST = "troyonthetrails.com"
   RUST_LOG = "troyonthetrails=debug"
+  PRIMARY_REGION = "ord"
 
 [checks]
   [checks.health]
