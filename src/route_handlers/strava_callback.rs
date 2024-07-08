@@ -5,24 +5,25 @@ use tracing::{debug, error};
 
 use crate::strava;
 
+#[allow(dead_code)]
 #[derive(Deserialize)]
 #[serde(untagged)]
 pub enum StravaCallbackParams {
     Success {
         code: String,
-        _scope: String,
-        _state: Option<String>,
+        scope: String,
+        state: Option<String>,
     },
     Error {
         error: String,
-        _state: Option<String>,
+        state: Option<String>,
     },
 }
 
 pub async fn handler(parameters: Option<Query<StravaCallbackParams>>) -> impl IntoResponse {
     match parameters {
         Some(query) => match query.0 {
-            StravaCallbackParams::Error { error, _state: _ } => {
+            StravaCallbackParams::Error { error, state: _ } => {
                 debug!("Failed to authenticate Strava user: {}", error);
                 super::html_template::HtmlTemplate(StravaCallbackTemplate {
                     message: "Failed to authenticate Strava user".to_string(),
@@ -34,8 +35,8 @@ pub async fn handler(parameters: Option<Query<StravaCallbackParams>>) -> impl In
 
             StravaCallbackParams::Success {
                 code,
-                _scope: _,
-                _state: _,
+                scope: _,
+                state: _,
             } => {
                 match strava::auth::get_token_from_code(code.clone()).await {
                     Ok(()) => {}

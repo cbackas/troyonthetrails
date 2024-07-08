@@ -6,11 +6,12 @@ use crate::db_service;
 
 use super::api_service::Athlete;
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug, Clone)]
 pub struct StravaTokenResponse {
-    pub _token_type: String,
+    pub token_type: String,
     pub expires_at: u64,
-    pub _expires_in: u64,
+    pub expires_in: u64,
     pub refresh_token: String,
     pub access_token: String,
     pub athlete: Option<Athlete>,
