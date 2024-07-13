@@ -7,7 +7,6 @@ use serde::{Deserialize, Deserializer};
 use std::fmt;
 use tokio::sync::Mutex;
 use tracing::log::error;
-use tracing::{trace, warn};
 
 use crate::AppState;
 
@@ -46,7 +45,7 @@ impl<'de> Deserialize<'de> for TrailStatus {
                     "closed" => Ok(TrailStatus::Closed),
                     "freeze" => Ok(TrailStatus::Freeze),
                     _ => {
-                        warn!("Unknown trail status: {}", value);
+                        tracing::warn!("Unknown trail status: {}", value);
                         Ok(TrailStatus::Unknown)
                     }
                 }
@@ -65,16 +64,16 @@ pub struct TrailSystem {
     name: String,
     city: String,
     state: String,
-    facebook_url: String,
+    facebook_url: Option<String>,
     lat: f64,
     lng: f64,
     total_distance: f64,
-    description: String,
-    pdf_map_url: String,
+    description: Option<String>,
+    pdf_map_url: Option<String>,
     video_url: Option<String>,
-    external_url: String,
+    external_url: Option<String>,
     status_description: String,
-    directions_url: String,
+    directions_url: Option<String>,
 }
 
 pub async fn handler(
@@ -85,7 +84,7 @@ pub async fn handler(
         if let Some(last_updated) = state.trail_data_last_updated {
             // if the trail data was updated less than 5 minutes ago, just use that
             if last_updated.elapsed().as_secs() < 300 {
-                trace!("Using cached trail data");
+                tracing::trace!("Using cached trail data");
                 let template = TrailCheckTemplate {
                     trails: state.trail_data.clone(),
                 };
@@ -139,7 +138,7 @@ async fn get_trail_html() -> anyhow::Result<String> {
         .context("Failed to get HTML from data source")?;
     let html = resp.text().await.context("Couldn't find html body")?;
 
-    trace!("Fetched trail data from data source");
+    tracing::trace!("Fetched trail data from data source");
 
     Ok(html)
 }
@@ -159,10 +158,11 @@ fn extract_trail_data(html: String) -> anyhow::Result<Vec<TrailSystem>> {
 
     let json = &html[start..end];
 
-    let trail_systems: Vec<TrailSystem> =
-        serde_json::from_str(json).context("Failed to parse trail data json")?;
-
-    Ok(trail_systems)
+    let trail_systems = serde_json::from_str(json);
+    match trail_systems {
+        Ok(trail_systems) => Ok(trail_systems),
+        Err(err) => Err(err.into()),
+    }
 }
 
 fn sort_trail_data(trail_data: Vec<TrailSystem>) -> Vec<TrailSystem> {
