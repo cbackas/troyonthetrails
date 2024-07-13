@@ -65,16 +65,16 @@ pub struct TrailSystem {
     name: String,
     city: String,
     state: String,
-    facebook_url: String,
+    facebook_url: Option<String>,
     lat: f64,
     lng: f64,
     total_distance: f64,
-    description: String,
-    pdf_map_url: String,
+    description: Option<String>,
+    pdf_map_url: Option<String>,
     video_url: Option<String>,
-    external_url: String,
+    external_url: Option<String>,
     status_description: String,
-    directions_url: String,
+    directions_url: Option<String>,
 }
 
 pub async fn handler(
@@ -159,10 +159,11 @@ fn extract_trail_data(html: String) -> anyhow::Result<Vec<TrailSystem>> {
 
     let json = &html[start..end];
 
-    let trail_systems: Vec<TrailSystem> =
-        serde_json::from_str(json).context("Failed to parse trail data json")?;
-
-    Ok(trail_systems)
+    let trail_systems = serde_json::from_str(json);
+    match trail_systems {
+        Ok(trail_systems) => Ok(trail_systems),
+        Err(err) => Err(err.into()),
+    }
 }
 
 fn sort_trail_data(trail_data: Vec<TrailSystem>) -> Vec<TrailSystem> {
