@@ -7,7 +7,6 @@ use serde::{Deserialize, Deserializer};
 use std::fmt;
 use tokio::sync::Mutex;
 use tracing::log::error;
-use tracing::{trace, warn};
 
 use crate::AppState;
 
@@ -46,7 +45,7 @@ impl<'de> Deserialize<'de> for TrailStatus {
                     "closed" => Ok(TrailStatus::Closed),
                     "freeze" => Ok(TrailStatus::Freeze),
                     _ => {
-                        warn!("Unknown trail status: {}", value);
+                        tracing::warn!("Unknown trail status: {}", value);
                         Ok(TrailStatus::Unknown)
                     }
                 }
@@ -85,7 +84,7 @@ pub async fn handler(
         if let Some(last_updated) = state.trail_data_last_updated {
             // if the trail data was updated less than 5 minutes ago, just use that
             if last_updated.elapsed().as_secs() < 300 {
-                trace!("Using cached trail data");
+                tracing::trace!("Using cached trail data");
                 let template = TrailCheckTemplate {
                     trails: state.trail_data.clone(),
                 };
@@ -139,7 +138,7 @@ async fn get_trail_html() -> anyhow::Result<String> {
         .context("Failed to get HTML from data source")?;
     let html = resp.text().await.context("Couldn't find html body")?;
 
-    trace!("Fetched trail data from data source");
+    tracing::trace!("Fetched trail data from data source");
 
     Ok(html)
 }
