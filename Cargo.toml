@@ -1,30 +1,9 @@
-[package]
-name = "troyonthetrails"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+members = ["web_service"]
+resolver = "2"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-anyhow = "1.0.72"
-askama = "0.12.0"
-axum = "0.6.20"
-chrono = "0.4.31"
-cocoon = "0.4.1"
-dotenv = "0.15.0"
-futures-util = "0.3.28"
-humantime = "2.1.0"
-lazy_static = "1.4.0"
-libsql = { git = "https://github.com/tursodatabase/libsql" }
-reqwest = { version = "0.11.18", features = ["json"] }
-serde = { version = "1.0.183", features = ["derive"] }
-serde_json = "1.0.104"
-sha2 = "0.10.7"
-tokio = { version = "1.31.0", features = ["full"] }
-tokio-tungstenite = { version = "0.20.1", features = ["native-tls"] }
-tower = "0.4.13"
-tower-http = { version = "0.4.3", features = ["fs", "compression-gzip"] }
+[workspace.dependencies]
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
-url = "2.4.0"
-webhook = "2.1.2"
+tokio = { version = "1.31.0", features = ["full"] }
+dotenv = "0.15.0"
