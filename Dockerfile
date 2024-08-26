@@ -1,4 +1,7 @@
 FROM rust:bookworm as build
+# shared util files
+ADD ./shared_utils/src /app/shared_utils/src
+ADD ./shared_utils/Cargo.toml /app/shared_utils/Cargo.toml
 # web service files
 ADD ./web_service/src /app/web_service/src
 ADD ./web_service/templates /app/web_service/templates
