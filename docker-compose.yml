@@ -1,6 +1,19 @@
 services:
   web_service:
     build: .
+    command: web_service
     env_file: ".env"
+    networks:
+      - containerNet
     ports:
       - "8080:8080"
+  map_service:
+    build: .
+    command: map_service
+    env_file: ".env"
+    networks:
+      - containerNet
+    # ports:
+    #   - "7070:7070"
+networks:
+  containerNet:
