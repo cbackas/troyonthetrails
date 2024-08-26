@@ -14,7 +14,7 @@ tasks:
     dir: 'web_service'
     cmds:
       - task: tailwind-generate
-      - cargo run -p web_service
+      - cargo run
   dev:
     aliases: [watch]
     cmds:
