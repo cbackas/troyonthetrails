@@ -29,14 +29,17 @@ use tracing_subscriber::{
 
 use crate::db_service::DbService;
 
+extern crate shared_utils;
+
+use shared_utils::env_utils;
+use shared_utils::utils;
+
 mod beacon_loop;
 mod db_service;
 mod discord;
 mod encryption;
-mod env_utils;
 mod route_handlers;
 mod strava;
-mod utils;
 
 pub static DB_SERVICE: OnceCell<DbService> = OnceCell::const_new();
 

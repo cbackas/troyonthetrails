@@ -3,7 +3,15 @@ members = ["web_service"]
 resolver = "2"
 
 [workspace.dependencies]
+shared_utils = { path = "./shared_utils" }
+anyhow = "1.0.72"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 tokio = { version = "1.31.0", features = ["full"] }
 dotenv = "0.15.0"
+axum = "0.6.20"
+tower = "0.4.13"
+tower-http = { version = "0.4.3", features = ["trace", "fs", "compression-gzip"] }
+serde = { version = "1.0.183", features = ["derive"] }
+serde_json = "1.0.104"
+

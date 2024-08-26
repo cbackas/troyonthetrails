@@ -3,6 +3,8 @@
 app = "troyonthetrails"
 primary_region = "ord"
 
+[processes]
+  web_service = "web_service"
 [build]
 
 [http_service]

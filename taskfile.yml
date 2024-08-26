@@ -10,10 +10,11 @@ tasks:
   build:
     cmds:
       - cargo build
-  run:
+  run-web:
+    dir: 'web_service'
     cmds:
       - task: tailwind-generate
-      - cargo run -p web_service
+      - cargo run
   dev:
     aliases: [watch]
     cmds:
