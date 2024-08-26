@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@mapbox/polyline": "^1.2.1",
+    "ol": "^10.0.0"
+  },
+  "devDependencies": {
+    "vite": "^5.3.5"
+  }
+}
