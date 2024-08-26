@@ -1,6 +1,7 @@
 target/
 node_modules/
 strava_data/
+dist/
 
 *.db
 *.db-shm
@@ -9,5 +10,5 @@ client_wal_index
 
 *.env*
 
-assets/main.css
-assets/htmx.min.js
+web_service/assets/main.css
+web_service/assets/htmx.min.js

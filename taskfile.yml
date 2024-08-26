@@ -4,12 +4,14 @@ tasks:
     cmds:
       - task: dev
   tailwind-generate:
+    dir: 'web_service'
     cmds:
       - npx tailwindcss -i ./styles/tailwind.css -o ./assets/main.css
   build:
     cmds:
       - cargo build
-  run:
+  run-web:
+    dir: 'web_service'
     cmds:
       - task: tailwind-generate
       - cargo run
@@ -27,4 +29,4 @@ tasks:
       - flyctl scale count 0 -a troyonthetrails
   start-app:
     cmds:
-      - flyctl scale count 1 -a troyonthetrai
+      - flyctl scale count 1 -a troyonthetrails

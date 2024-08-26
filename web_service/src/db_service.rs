@@ -37,7 +37,8 @@ pub async fn get_db_service() -> &'static DbService {
     DB_SERVICE
         .get_or_init(|| async {
             let db = libsql::Database::open_with_remote_sync(
-                env::var("LIBSQL_LOCAL_DB_PATH").unwrap_or("file:local_replica.db".to_string()),
+                env::var("LIBSQL_LOCAL_DB_PATH")
+                    .unwrap_or("file:/tmp/local_replica.db".to_string()),
                 env::var("LIBSQL_CLIENT_URL").unwrap(),
                 env::var("LIBSQL_CLIENT_TOKEN").unwrap(),
             )
