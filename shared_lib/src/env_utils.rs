@@ -56,3 +56,10 @@ pub fn get_db_encryption_key() -> String {
         _ => "defaultdbencryptionkey".to_string(),
     }
 }
+
+pub fn get_thunderforest_api_key() -> Option<String> {
+    match env::var("THUNDERFOREST_API_KEY") {
+        Ok(key) => Some(key),
+        _ => None,
+    }
+}

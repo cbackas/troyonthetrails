@@ -29,10 +29,10 @@ use tracing_subscriber::{
 
 use crate::db_service::DbService;
 
-extern crate shared_utils;
+extern crate shared_lib;
 
-use shared_utils::env_utils;
-use shared_utils::utils;
+use shared_lib::env_utils;
+use shared_lib::utils;
 
 mod beacon_loop;
 mod db_service;

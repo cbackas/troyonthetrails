@@ -1,4 +1,6 @@
+use serde_json::{self};
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 
 pub fn meters_to_feet(meters: f64, round_to_whole: bool) -> f64 {
     let feet = meters * 3.28084;
@@ -56,4 +58,15 @@ pub fn hash_string(string: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(string);
     format!("{:x}", hasher.finalize())
+}
+
+pub fn struct_to_hashmap<T>(s: T) -> HashMap<String, serde_json::Value>
+where
+    T: serde::Serialize,
+{
+    let json_value = serde_json::to_value(s).unwrap();
+    match json_value {
+        serde_json::Value::Object(map) => map.into_iter().collect(),
+        _ => panic!("Expected a struct to serialize into a JSON object!"),
+    }
 }

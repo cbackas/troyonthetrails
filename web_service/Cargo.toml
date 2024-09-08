@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-shared_utils = {workspace = true}
+shared_lib = {workspace = true}
 anyhow = {workspace = true}
 dotenv = {workspace = true}
 tokio = {workspace = true}
@@ -15,7 +15,8 @@ tower = {workspace = true}
 tower-http = {workspace = true}
 serde = {workspace = true}
 serde_json = {workspace = true}
-askama = "0.12.0"
+serde_urlencoded = {workspace = true}
+askama = {workspace = true}
 chrono = "0.4.31"
 cocoon = "0.4.1"
 futures-util = "0.3.28"

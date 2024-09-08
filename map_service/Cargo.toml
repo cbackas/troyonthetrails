@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-shared_utils = {workspace = true}
+shared_lib = {workspace = true}
 anyhow = {workspace = true}
 dotenv = {workspace = true}
 tokio = {workspace = true}

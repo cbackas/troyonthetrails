@@ -1,3 +1,4 @@
+use shared_lib::structs::URLParams;
 use webhook::{
     client::WebhookClient,
     models::{Embed, Message},
