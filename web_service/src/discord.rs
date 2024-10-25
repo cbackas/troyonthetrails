@@ -20,11 +20,7 @@ struct WebhookData {
     max_speed: f64,
     image: Option<WebhookImage>,
 }
-
-struct WebhookImage {
-    key: String,
-    data: Vec<u8>,
-}
+struct WebhookImage(Vec<u8>);
 
 impl From<TOTTWebhook> for DiscordEmbed {
     fn from(val: TOTTWebhook) -> Self {
@@ -38,7 +34,7 @@ impl From<TOTTWebhook> for DiscordEmbed {
         if let Some(webhook_data) = &val.webhook_data {
             if let Some(image) = &webhook_data.image {
                 embed.image(EmbedImage::Bytes(ByteImageSource {
-                    bytes: image.data.clone(),
+                    bytes: image.0.clone(),
                     file_name: "map_background.png".to_string(),
                 }));
                 tracing::debug!("Image found");
@@ -383,10 +379,7 @@ pub async fn send_end_webhook(activity_id: Option<i64>) {
                             tracing::error!("Failed to get map image: {}", e);
                             None
                         } else {
-                            Some(WebhookImage {
-                                key: "map".to_string(),
-                                data: data.unwrap(),
-                            })
+                            Some(WebhookImage(data.unwrap()))
                         }
                     } else {
                         None
