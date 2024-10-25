@@ -25,7 +25,9 @@ extern crate shared_lib;
 use shared_lib::env_utils;
 use shared_lib::utils;
 
+mod browser;
 mod handler;
+mod html_template;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -41,6 +43,7 @@ async fn main() -> anyhow::Result<()> {
 
     let port = 7070;
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
+    // TODO make the host_uri reflect the correct port
     let host_uri = crate::env_utils::get_host_uri();
 
     tracing::info!("Starting server at host: {}", host_uri);
@@ -86,7 +89,7 @@ fn get_main_router() -> Router {
     tracing::debug!("initializing router(s) ...");
 
     Router::new()
-        .route("/", get(handler::html_handler))
+        .route("/", get(handler::route_handler))
         .route("/assets/index.js", get(handler::js_handler))
         .route("/assets/index.css", get(handler::css_handler))
         .route("/healthcheck", get(|| async { "Ok" }))
