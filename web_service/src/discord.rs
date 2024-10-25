@@ -42,6 +42,7 @@ impl From<TOTTWebhook> for DiscordEmbed {
                     file_name: "map_background.png".to_string(),
                 }));
                 tracing::debug!("Image found");
+                return embed;
             } else {
                 tracing::debug!("No image found");
             }
