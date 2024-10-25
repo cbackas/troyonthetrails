@@ -6,11 +6,11 @@ primary_region = "ord"
 [processes]
   web_service = "web_service"
   map_service = "map_service"
-  # beacon_worker = "beacon_worker"
 
 [build]
 
-[http_service]
+# HTTP service for web_service
+[[services]]
   internal_port = 8080
   force_https = true
   auto_stop_machines = true
@@ -18,17 +18,42 @@ primary_region = "ord"
   min_machines_running = 1
   processes = ["web_service"]
 
-[env]
-  HOST = "troyonthetrails.com"
-  RUST_LOG = "web_service=debug"
-  PRIMARY_REGION = "ord"
+  [services.ports]
+    handlers = ["http"]
+    port = 8080
 
-[checks]
-  [checks.health]
+  [services.http_checks]
     grace_period = "60s"
     interval = "30s"
     method = "get"
     path = "/healthcheck"
     port = 8080
+    timeout = "10s"
+    type = "http"
+
+[env]
+  HOST = "troyonthetrails.com"
+  RUST_LOG = "web_service=debug"
+  PRIMARY_REGION = "ord"
+
+# HTTP service for map_service
+[[services]]
+  internal_port = 7070
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["map_service"]
+
+  [services.ports]
+    handlers = ["http"]
+    port = 7070
+
+  [services.http_checks]
+    grace_period = "60s"
+    interval = "30s"
+    method = "get"
+    path = "/healthcheck"
+    port = 7070
     timeout = "10s"
     type = "http"
