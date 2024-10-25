@@ -20,10 +20,10 @@ use tracing_subscriber::{
     filter::LevelFilter, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
 };
 
-extern crate shared_utils;
+extern crate shared_lib;
 
-use shared_utils::env_utils;
-use shared_utils::utils;
+use shared_lib::env_utils;
+use shared_lib::utils;
 
 mod handler;
 
