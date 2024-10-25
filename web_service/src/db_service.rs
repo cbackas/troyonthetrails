@@ -135,10 +135,7 @@ pub async fn get_troy_status() -> TroyStatus {
         };
     }
 
-    let result = match result.unwrap().next() {
-        Err(_) => None,
-        Ok(result) => result,
-    };
+    let result = result.unwrap().next().unwrap_or_default();
 
     if result.is_none() {
         tracing::error!("Failed to get troy status from db, didn't find any rows",);
@@ -227,10 +224,7 @@ pub async fn get_strava_auth() -> Option<TokenData> {
         return None;
     }
 
-    let result = match result.unwrap().next() {
-        Err(_) => None,
-        Ok(result) => result,
-    };
+    let result = result.unwrap().next().unwrap_or_default();
 
     if result.is_none() {
         tracing::error!("Failed to get strava auth from db, expected 1 row but found none");
