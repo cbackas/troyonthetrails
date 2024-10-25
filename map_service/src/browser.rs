@@ -1,5 +1,4 @@
 use fantoccini::{self, Locator};
-use std::time::Duration;
 
 pub async fn get_screenshot(url: &str) -> anyhow::Result<Vec<u8>> {
     let caps = {

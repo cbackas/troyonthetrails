@@ -130,16 +130,16 @@ impl Default for DiscordMessage {
     }
 }
 
-impl Into<reqwest::multipart::Form> for DiscordMessage {
-    fn into(mut self) -> reqwest::multipart::Form {
+impl From<DiscordMessage> for reqwest::multipart::Form {
+    fn from(val: DiscordMessage) -> Self {
         let mut form = reqwest::multipart::Form::new();
 
-        if let Ok(payload_json) = serde_json::to_string(&self) {
+        if let Ok(payload_json) = serde_json::to_string(&val) {
             tracing::debug!("Payload JSON: {}", payload_json);
             form = form.text("payload_json", payload_json);
         }
 
-        if let Some(embed) = &self.embed {
+        if let Some(embed) = &val.embed {
             if let Some(EmbedImage::Bytes(image)) = &embed.image {
                 let image = image.clone();
                 form = form.part(
@@ -429,9 +429,7 @@ pub async fn send_discard_webhook() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tracing_subscriber::{
-        filter::LevelFilter, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
-    };
+    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
     #[tokio::test]
     async fn test_send_ending_webhook() {
@@ -445,7 +443,7 @@ mod tests {
             .with(tracing_subscriber::fmt::layer())
             .init();
 
-        let db = crate::db_service::get_db_service().await;
+        let _db = crate::db_service::get_db_service().await;
 
         let activity_id = 11982065575;
         send_end_webhook(Some(activity_id)).await;
