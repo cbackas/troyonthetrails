@@ -9,5 +9,3 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = "0.1.40"
 sha2 = "0.10.7"
-aws-sdk-s3 = "1.46.0"
-aws-config = "1.5.5"
