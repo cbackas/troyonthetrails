@@ -24,7 +24,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Build
+      - name: web assets build
+        run: npm ci && npm run build
+        working-directory: map_service
+      - name: Cargo build
         run: cargo build --verbose
   build_docker:
     runs-on: ubuntu-latest
