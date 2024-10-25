@@ -1,13 +1,13 @@
 import Feature from 'ol/Feature.js';
 import Map from 'ol/Map.js';
 import { Vector as VectorSource, OSM as OSMSource } from 'ol/source';
-import {fromLonLat} from 'ol/proj.js';
+import { fromLonLat } from 'ol/proj.js';
 import View from 'ol/View.js';
 import {
   Stroke,
   Style,
 } from 'ol/style.js';
-import {Tile as TileLayer, Vector as VectorLayer} from 'ol/layer.js';
+import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer.js';
 import * as polylib from '@mapbox/polyline';
 import { LineString } from 'ol/geom';
 
@@ -21,7 +21,7 @@ if (urlParams.get('polyline') == null) {
   process.exit(0);
 }
 
-const polyline = decodeURIComponent(urlParams.get('polyline')).replace(/\\\\/g , '\\')
+const polyline = decodeURIComponent(urlParams.get('polyline')).replace(/\\\\/g, '\\')
 let coords = polylib.decode(polyline);
 
 function findMedian(values) {
@@ -49,6 +49,13 @@ function findCenter(coords) {
   return fromLonLat([medianLng, medianLat]);
 }
 
+const tileLayer = new TileLayer({
+  source: new OSMSource({
+    attributions: 'Maps &copy; <a href="https://thunderforest.com" target="_blank">Thunderbird</a>, Data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>',
+    url: 'https://{a-c}.tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=' + key
+  }),
+})
+
 const map = new Map({
   target: document.getElementById('map'),
   view: new View({
@@ -58,18 +65,13 @@ const map = new Map({
     maxZoom: 17.2,
   }),
   layers: [
-    new TileLayer({
-      source: new OSMSource({
-        attributions: 'Maps &copy; <a href="https://thunderforest.com" target="_blank">Thunderbird</a>, Data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>',
-        url: 'https://{a-c}.tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=' + key
-      }),
-    }),
+    tileLayer,
     new VectorLayer({
       source: new VectorSource({
         features: [(new Feature({
-                type: 'route',
-                geometry: new LineString((coords.map((c) => fromLonLat(c.reverse())))),
-            }))],
+          type: 'route',
+          geometry: new LineString((coords.map((c) => fromLonLat(c.reverse())))),
+        }))],
       }),
       style: new Style({
         stroke: new Stroke({
@@ -84,15 +86,30 @@ const map = new Map({
 });
 
 // dark mode for the map
-map.on('postcompose',function(_){
-  document.querySelector('canvas').style.filter="invert(100%) hue-rotate(180deg)";
+map.on('postcompose', function (_) {
+  document.querySelector('canvas').style.filter = "invert(100%) hue-rotate(180deg)";
 });
 
-// add a title overlay if a title is provided
-// const title = urlParams.get('title')
-// console.log(title)
-// if (title != null) {
-//   const element = document.getElementById('title')
-//   element.textContent = title;
-//   document.title = title;
-// }
+// invisible element to indicate tiles are loaded - used for tracking loaded state to screenshot
+const loadingIndicator = document.createElement('div');
+loadingIndicator.id = 'tiles-loaded-indicator';
+loadingIndicator.style.display = 'none';
+document.body.appendChild(loadingIndicator);
+
+let loadingCount = 0;
+
+// track tile loading and loaded events
+tileLayer.getSource().on('tileloadstart', function () {
+  loadingCount++;
+  loadingIndicator.style.display = 'none';
+});
+
+tileLayer.getSource().on('tileloadend', function () {
+  loadingCount--;
+  if (loadingCount === 0) {
+    setTimeout(() => {
+      loadingIndicator.style.display = 'block';
+    }, 300)
+  }
+});
+

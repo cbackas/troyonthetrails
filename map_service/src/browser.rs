@@ -21,7 +21,12 @@ pub async fn get_screenshot(url: &str) -> anyhow::Result<Vec<u8>> {
 
     client.goto(url).await?;
     client.wait().for_element(Locator::Css("canvas")).await?;
-    tokio::time::sleep(Duration::from_millis(2000)).await;
+    client
+        .wait()
+        .for_element(Locator::Css(
+            "#tiles-loaded-indicator[style='display: block;']",
+        ))
+        .await?;
     let image = client.screenshot().await?;
     client.close().await?;
 
