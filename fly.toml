@@ -9,20 +9,21 @@ primary_region = "ord"
 
 [build]
 
-# HTTP service for web_service
-[[services]]
+[http_service]
+  processes = ["web_service"]
   internal_port = 8080
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true
   min_machines_running = 1
-  processes = ["web_service"]
 
-  [services.ports]
-    handlers = ["http"]
-    port = 8080
+[env]
+  HOST = "troyonthetrails.com"
+  RUST_LOG = "web_service=debug"
+  PRIMARY_REGION = "ord"
 
-  [services.http_checks]
+[checks]
+  [checks.health]
     grace_period = "60s"
     interval = "30s"
     method = "get"
@@ -31,7 +32,3 @@ primary_region = "ord"
     timeout = "10s"
     type = "http"
 
-[env]
-  HOST = "troyonthetrails.com"
-  RUST_LOG = "web_service=debug,map_service=debug"
-  PRIMARY_REGION = "ord"
