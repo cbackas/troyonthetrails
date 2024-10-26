@@ -46,6 +46,8 @@ COPY --from=build /app/target/release/web_service /usr/local/bin/web_service
 COPY --from=build /app/target/release/map_service /usr/local/bin/map_service
 COPY --from=web_assets /app/assets /app/assets
 
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+
 WORKDIR /app
-ENTRYPOINT [ "dumb-init", "--" ]
+ENTRYPOINT [ "entrypoint.sh" ]
 CMD ["web_service"]

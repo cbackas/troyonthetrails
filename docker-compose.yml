@@ -13,7 +13,5 @@ services:
     env_file: ".env"
     networks:
       - containerNet
-    # ports:
-    #   - "7070:7070"
 networks:
   containerNet:
