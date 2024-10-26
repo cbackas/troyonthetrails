@@ -1,5 +1,5 @@
 [package]
-name = "web_service"
+name = "map_service"
 version = "0.1.0"
 edition = "2021"
 
@@ -15,15 +15,7 @@ tower = {workspace = true}
 tower-http = {workspace = true}
 serde = {workspace = true}
 serde_json = {workspace = true}
-serde_urlencoded = {workspace = true}
 askama = {workspace = true}
-chrono = "0.4.31"
-cocoon = "0.4.1"
-futures-util = "0.3.28"
-humantime = "2.1.0"
-lazy_static = "1.4.0"
-libsql = { git = "https://github.com/tursodatabase/libsql" }
-reqwest = { version = "0.11.18", features = ["json", "multipart"] }
-bytes = "1"
-url = "2.4.0"
-
+serde_urlencoded = {workspace = true}
+fantoccini = "0.21.1"
+base64 = "0.22.1"

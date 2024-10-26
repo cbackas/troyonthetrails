@@ -1,12 +1,7 @@
 use axum::Json;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::db_service;
-
-#[derive(Debug, Serialize)]
-pub struct WebhookResponse {
-    message: String,
-}
 
 #[derive(Deserialize, Debug)]
 pub struct WebhookRequest {

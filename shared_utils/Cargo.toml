@@ -1,9 +1,0 @@
-[package]
-name = "shared_utils"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-tracing = "0.1.40"
-sha2 = "0.10.7"
-

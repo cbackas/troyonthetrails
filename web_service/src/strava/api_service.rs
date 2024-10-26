@@ -57,7 +57,7 @@ pub struct Activity {
     pub start_date: String,
     pub start_date_local: String,
     pub timezone: String,
-    pub utc_offset: f64, // This field should be a floating-point type
+    pub utc_offset: f64,
     pub start_latlng: Vec<f64>,
     pub end_latlng: Vec<f64>,
     pub location_city: Option<String>,
@@ -68,7 +68,7 @@ pub struct Activity {
     pub comment_count: i64,
     pub athlete_count: i64,
     pub photo_count: i64,
-    pub map: serde_json::Value,
+    pub map: Option<Map>,
     pub trainer: bool,
     pub commute: bool,
     pub manual: bool,
@@ -83,7 +83,7 @@ pub struct Activity {
     pub display_hide_heartrate_option: bool,
     pub elev_high: f64,
     pub elev_low: f64,
-    pub upload_id: i64, // This field should be an integer type
+    pub upload_id: i64,
     pub upload_id_str: String,
     pub external_id: String,
     pub pr_count: i64,
@@ -96,6 +96,14 @@ pub struct Athlete {
     pub id: u64,
     #[serde(flatten)]
     other: serde_json::Value, // This will capture all other fields within 'athlete' as a JSON value.
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Map {
+    pub id: String,
+    pub polyline: Option<String>,
+    pub summary_polyline: String,
+    pub resource_state: i64,
 }
 
 pub struct StravaDataCache {

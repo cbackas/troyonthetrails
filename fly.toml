@@ -5,20 +5,23 @@ primary_region = "ord"
 
 [processes]
   web_service = "web_service"
+  map_service = "map_service"
+
 [build]
 
 [http_service]
+  processes = ["web_service"]
   internal_port = 8080
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true
   min_machines_running = 1
-  processes = ["web_service"]
 
 [env]
   HOST = "troyonthetrails.com"
   RUST_LOG = "web_service=debug"
   PRIMARY_REGION = "ord"
+  MAP_SERVICE_URL=http://map_service.process.troyonthetrails.internal:7070/
 
 [checks]
   [checks.health]
@@ -29,3 +32,4 @@ primary_region = "ord"
     port = 8080
     timeout = "10s"
     type = "http"
+

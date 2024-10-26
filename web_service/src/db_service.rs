@@ -37,8 +37,7 @@ pub async fn get_db_service() -> &'static DbService {
     DB_SERVICE
         .get_or_init(|| async {
             let db = libsql::Database::open_with_remote_sync(
-                env::var("LIBSQL_LOCAL_DB_PATH")
-                    .unwrap_or("file:/tmp/local_replica.db".to_string()),
+                env::var("LIBSQL_LOCAL_DB_PATH").unwrap_or("/tmp/local_replica.db".to_string()),
                 env::var("LIBSQL_CLIENT_URL").unwrap(),
                 env::var("LIBSQL_CLIENT_TOKEN").unwrap(),
             )
@@ -127,8 +126,8 @@ pub async fn get_troy_status() -> TroyStatus {
         .query("SELECT * FROM troy_status", libsql::params!())
         .await;
 
-    if result.is_err() {
-        tracing::error!("Failed to get troy status from db");
+    if let Err(result) = result {
+        tracing::error!("Failed to get troy status from db: {}", result.to_string());
         return TroyStatus {
             is_on_trail: false,
             beacon_url: None,
@@ -136,10 +135,7 @@ pub async fn get_troy_status() -> TroyStatus {
         };
     }
 
-    let result = match result.unwrap().next() {
-        Err(_) => None,
-        Ok(result) => result,
-    };
+    let result = result.unwrap().next().unwrap_or_default();
 
     if result.is_none() {
         tracing::error!("Failed to get troy status from db, didn't find any rows",);
@@ -228,10 +224,7 @@ pub async fn get_strava_auth() -> Option<TokenData> {
         return None;
     }
 
-    let result = match result.unwrap().next() {
-        Err(_) => None,
-        Ok(result) => result,
-    };
+    let result = result.unwrap().next().unwrap_or_default();
 
     if result.is_none() {
         tracing::error!("Failed to get strava auth from db, expected 1 row but found none");

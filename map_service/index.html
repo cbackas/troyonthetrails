@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>TOTT - Maps</title>
+    <link rel="stylesheet" href="node_modules/ol/ol.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton+SC&display=swap" rel="stylesheet">
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+      }
+
+      #map-container {
+        position: relative;
+        width: 100%;
+        height: 100vh; /* Full viewport height */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+      }
+
+      #title {
+        text-align: center;
+        font-size: 10em;
+        color: white;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        word-wrap: break-word;
+        max-width: 90%; /* Adjust as necessary */
+        z-index: 10;
+        margin-top: 0em;
+        margin-bottom: 0em;
+      }
+
+      .anton-sc-regular {
+        font-family: "Anton SC", sans-serif;
+        font-weight: 400;
+        font-style: normal;
+      }
+
+      .stat-duration {
+        text-align: center;
+        color: white;
+        font-size: 5em;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        z-index: 10;
+      }
+
+      .stats {
+        display: flex;
+        flex-direction: column;
+        margin-top: 1em;
+        z-index: 10;
+      }
+
+      .stat {
+        display: flex;
+        align-items: center;
+        margin: 0.2em;
+        min-height: 100px;
+        padding: 0.5em;
+      }
+
+      .stat img {
+        margin-right: 0.5em;
+        align-self: center;
+        width: 80px;
+        height: 80px;
+      }
+
+      .stat h3 {
+        font-size: 4em;
+        color: #f1f1f1;
+        margin: 0;
+        align-self: center;
+      }
+
+      .footer {
+        position: absolute;
+        bottom: 0;
+        width: 100vw;
+        height: 100px;
+        display: flex;
+        /* background-color: red; */
+        z-index: 10;
+      }
+
+      .map {
+        width: 100%;
+        height: 100vh;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+        filter: brightness(0.8);
+      }
+    </style>
+    <script type="module" src="src/script.js"></script>
+  </head>
+  <body>
+    <div id="map-container">
+      {% if let Some(ride_title) = ride_title %}
+        <h1 id="title" class="anton-sc-regular">{{ ride_title }}</h1>
+      {% endif %}
+      {% if let Some(duration) = duration %}
+        <h3 class="stat-duration">{{ duration }} ride</h3>
+      {% endif %}
+      {% if distance.is_some() || elevation_gain.is_some() || average_speed.is_some() || top_speed.is_some() %}
+        <div class="stats">
+          {% if let Some(distance) = distance %}
+            <div class="stat">
+              <img src="./measure-2-svgrepo-com.svg" alt="distance" width="80" height="80">
+              <h3>Rode {{ distance }} miles</h3>
+            </div>
+          {% endif %}
+          {% if let Some(elevation_gain) = elevation_gain %}
+            <div class="stat">
+              <img src="./climb-svgrepo-com.svg" alt="elevation" width="80" height="80">
+              <h3>Climbed {{ elevation_gain }} feet</h3>
+            </div>
+          {% endif %}
+          {% if let Some(average_speed) = average_speed %}
+            <div class="stat">
+              <img src="./speedometer-svgrepo-com.svg" alt="speed" width="80" height="80">
+              <h3>Average speed of {{ average_speed }} mph</h3>
+            </div>
+          {% endif %}
+          {% if let Some(top_speed) = top_speed %}
+            <div class="stat">
+              <img src="./lightning-charge-svgrepo-com.svg" alt="top speed" width="80" height="80">
+              <h3>Top speed of {{ top_speed }} mph</h3>
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+      <div id="map" class="map"></div>
+    </div>
+  </body>
+</html>
