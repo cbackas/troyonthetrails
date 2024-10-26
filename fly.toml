@@ -33,27 +33,5 @@ primary_region = "ord"
 
 [env]
   HOST = "troyonthetrails.com"
-  RUST_LOG = "web_service=debug"
+  RUST_LOG = "web_service=debug,map_service=debug"
   PRIMARY_REGION = "ord"
-
-# HTTP service for map_service
-[[services]]
-  internal_port = 7070
-  force_https = true
-  auto_stop_machines = true
-  auto_start_machines = true
-  min_machines_running = 1
-  processes = ["map_service"]
-
-  [services.ports]
-    handlers = ["http"]
-    port = 7070
-
-  [services.http_checks]
-    grace_period = "60s"
-    interval = "30s"
-    method = "get"
-    path = "/healthcheck"
-    port = 7070
-    timeout = "10s"
-    type = "http"
