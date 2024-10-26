@@ -21,7 +21,7 @@ primary_region = "ord"
   HOST = "troyonthetrails.com"
   RUST_LOG = "web_service=debug"
   PRIMARY_REGION = "ord"
-  MAP_SERVICE_URL=http://map_service.process.troyonthetrails.internal:7070/
+  MAP_SERVICE_URL="http://map_service.process.troyonthetrails.internal:7070/"
 
 [checks]
   [checks.health]
