@@ -39,14 +39,22 @@ ADD ./web_service/templates /app/templates
 RUN npm ci
 RUN npx tailwindcss -i ./styles/tailwind.css -o ./assets/main.css
 
-FROM rust:slim-bookworm as runtime
-RUN apt-get update && apt-get install -y chromium-driver chromium dumb-init
+FROM debian:bookworm-slim as runtime
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    chromium-driver \
+    chromium \
+    dumb-init \
+    && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/target/release/web_service /usr/local/bin/web_service
 COPY --from=build /app/target/release/map_service /usr/local/bin/map_service
 COPY --from=web_assets /app/assets /app/assets
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 WORKDIR /app
 ENTRYPOINT [ "entrypoint.sh" ]
