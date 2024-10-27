@@ -14,8 +14,9 @@ pub async fn process_beacon() {
         return;
     }
 
-    let beacon_data = match troy_status.beacon_url {
-        Some(beacon_url) => match strava::beacon::get_beacon_data(beacon_url).await {
+    let beacon_url = troy_status.beacon_url;
+    let beacon_data = match beacon_url {
+        Some(ref url) => match strava::beacon::get_beacon_data(url.to_string()).await {
             Ok(data) => Some(data),
             Err(e) => {
                 tracing::error!("Failed to get beacon data: {}", e);
@@ -36,7 +37,7 @@ pub async fn process_beacon() {
             db_service::set_troy_status(true).await;
             if !troy_status.is_on_trail {
                 tracing::info!("Troy status updated to on the trails");
-                discord::send_starting_webhook().await;
+                discord::send_starting_webhook(beacon_url).await;
             }
         }
         Some(Status::Uploaded) => {

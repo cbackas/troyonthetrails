@@ -7,8 +7,35 @@ use crate::{
     utils,
 };
 
-struct TOTTWebhook {
-    troy_status: bool,
+struct OnTrailsNotification {
+    beacon_url: Option<String>,
+}
+
+impl From<OnTrailsNotification> for DiscordEmbed {
+    fn from(val: OnTrailsNotification) -> Self {
+        let mut embed: DiscordEmbed = DiscordEmbed::default();
+        embed.title("Troy is no longer on the trails!");
+        if let Some(beacon_url) = &val.beacon_url {
+            embed.description("Troy has started a new activity").field(
+                "Beacon URL",
+                beacon_url,
+                false,
+            );
+        }
+        embed
+    }
+}
+
+impl From<OnTrailsNotification> for DiscordMessage {
+    fn from(val: OnTrailsNotification) -> Self {
+        DiscordMessage {
+            embed: Some(val.into()),
+            ..Default::default()
+        }
+    }
+}
+
+struct OffTrailsNotification {
     webhook_data: Option<WebhookData>,
 }
 
@@ -22,56 +49,57 @@ struct WebhookData {
 }
 struct WebhookImage(Vec<u8>);
 
-impl From<TOTTWebhook> for DiscordEmbed {
-    fn from(val: TOTTWebhook) -> Self {
+impl From<OffTrailsNotification> for DiscordEmbed {
+    fn from(val: OffTrailsNotification) -> Self {
         let mut embed: DiscordEmbed = DiscordEmbed::default();
 
-        embed.title(match val.troy_status {
-            true => "Troy is on the trails!",
-            false => "Troy is no longer on the trails!",
-        });
+        embed.title("Troy is no longer on the trails!");
 
-        if let Some(webhook_data) = &val.webhook_data {
-            if let Some(image) = &webhook_data.image {
-                embed.image(EmbedImage::Bytes(ByteImageSource {
-                    bytes: image.0.clone(),
-                    file_name: "map_background.png".to_string(),
-                }));
-                tracing::debug!("Image found");
-                return embed;
-            } else {
-                tracing::debug!("No image found");
-            }
+        let webhook_data = &val.webhook_data;
+        if webhook_data.is_none() {
+            return embed;
+        }
+        let webhook_data = webhook_data.as_ref().unwrap();
 
-            if let Some(name) = &webhook_data.name {
-                embed.description = Some(name.to_string());
-            }
+        if let Some(image) = &webhook_data.image {
+            embed.image(EmbedImage::Bytes(ByteImageSource {
+                bytes: image.0.clone(),
+                file_name: "map_background.png".to_string(),
+            }));
+            tracing::debug!("Image found");
+            return embed;
+        } else {
+            tracing::debug!("No image found");
+        }
 
-            embed
-                .field("Distance", &format!("{}mi", &webhook_data.distance), true)
-                .field(
-                    "Elevation Gain",
-                    &format!("{}ft", &webhook_data.total_elevation_gain),
-                    true,
-                )
-                .field(
-                    "Average Speed",
-                    &format!("{}mph", &webhook_data.average_speed),
-                    true,
-                )
-                .field(
-                    "Top Speed",
-                    &format!("{}mph", &webhook_data.max_speed),
-                    true,
-                );
-        };
+        if let Some(name) = &webhook_data.name {
+            embed.description = Some(name.to_string());
+        }
+
+        embed
+            .field("Distance", &format!("{}mi", &webhook_data.distance), true)
+            .field(
+                "Elevation Gain",
+                &format!("{}ft", &webhook_data.total_elevation_gain),
+                true,
+            )
+            .field(
+                "Average Speed",
+                &format!("{}mph", &webhook_data.average_speed),
+                true,
+            )
+            .field(
+                "Top Speed",
+                &format!("{}mph", &webhook_data.max_speed),
+                true,
+            );
 
         embed
     }
 }
 
-impl From<TOTTWebhook> for DiscordMessage {
-    fn from(val: TOTTWebhook) -> Self {
+impl From<OffTrailsNotification> for DiscordMessage {
+    fn from(val: OffTrailsNotification) -> Self {
         DiscordMessage {
             embed: Some(val.into()),
             ..Default::default()
@@ -314,12 +342,8 @@ async fn send_webhook(message: impl Into<DiscordMessage>) {
     }
 }
 
-pub async fn send_starting_webhook() {
-    send_webhook(TOTTWebhook {
-        troy_status: true,
-        webhook_data: None,
-    })
-    .await;
+pub async fn send_starting_webhook(beacon_url: Option<String>) {
+    send_webhook(OnTrailsNotification { beacon_url }).await;
 }
 
 pub async fn send_end_webhook(activity_id: Option<i64>) {
@@ -333,7 +357,7 @@ pub async fn send_end_webhook(activity_id: Option<i64>) {
         },
         None => None,
     };
-    let strava_stats: Option<WebhookData> = {
+    let webhook_data: Option<WebhookData> = {
         match activity {
             None => {
                 tracing::error!("No last activity found");
@@ -398,11 +422,7 @@ pub async fn send_end_webhook(activity_id: Option<i64>) {
         }
     };
 
-    send_webhook(TOTTWebhook {
-        troy_status: false,
-        webhook_data: strava_stats,
-    })
-    .await;
+    send_webhook(OffTrailsNotification { webhook_data }).await;
 }
 
 async fn get_map_image(map_service_url: String, url_params: URLParams) -> anyhow::Result<Vec<u8>> {
