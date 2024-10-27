@@ -7,6 +7,6 @@
     "ol": "^10.0.0"
   },
   "devDependencies": {
-    "vite": "^5.3.5"
+    "vite": "^5.3.6"
   }
 }
