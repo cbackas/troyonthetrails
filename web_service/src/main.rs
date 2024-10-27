@@ -73,7 +73,9 @@ async fn main() -> anyhow::Result<()> {
     run_beacon_loop();
 
     let port = crate::env_utils::get_port();
-    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
+    let addr = format!("[::]:{}", port)
+        .parse::<std::net::SocketAddr>()
+        .expect("unable to parse address");
     let host_uri = crate::env_utils::get_host_uri();
 
     info!("Starting server at host: {}", host_uri);
