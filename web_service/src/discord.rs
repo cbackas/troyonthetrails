@@ -14,13 +14,9 @@ struct OnTrailsNotification {
 impl From<OnTrailsNotification> for DiscordEmbed {
     fn from(val: OnTrailsNotification) -> Self {
         let mut embed: DiscordEmbed = DiscordEmbed::default();
-        embed.title("Troy is no longer on the trails!");
+        embed.title("Troy is on the trails!");
         if let Some(beacon_url) = &val.beacon_url {
-            embed.description("Troy has started a new activity").field(
-                "Beacon URL",
-                beacon_url,
-                false,
-            );
+            embed.description(beacon_url);
         }
         embed
     }
