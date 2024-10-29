@@ -7,7 +7,7 @@ pub async fn get_screenshot(url: &str) -> anyhow::Result<Vec<u8>> {
         caps.insert(
             "goog:chromeOptions".to_string(),
             serde_json::json!({
-                "args": ["--headless", "--disable-gpu", "--window-size=1600,1600"]
+                "args": ["--headless", "--disable-gpu", "--window-size=1600,1600", "--no-sandbox", "--disable-dev-shm-usage"]
             }),
         );
         caps
