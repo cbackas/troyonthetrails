@@ -49,6 +49,8 @@ RUN apt-get update && \
     && \
     rm -rf /var/lib/apt/lists/*
 
+ENV CHROME_PATH=/usr/bin/chromium
+
 COPY --from=build /app/target/release/web_service /usr/local/bin/web_service
 COPY --from=build /app/target/release/map_service /usr/local/bin/map_service
 COPY --from=web_assets /app/assets /app/assets
