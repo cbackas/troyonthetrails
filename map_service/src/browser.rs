@@ -7,7 +7,7 @@ pub async fn get_screenshot(url: &str) -> anyhow::Result<Vec<u8>> {
         caps.insert(
             "moz:firefoxOptions".to_string(),
             serde_json::json!({
-                "args": ["--headless"]
+                "args": ["--headless", "--disable-extensions", "--no-sandbox", "--disable-gpu", "--disable-application-cache", "--disable-dev-shm-usage"],
             }),
         );
         caps
