@@ -3,11 +3,11 @@ use fantoccini::{self, Locator};
 pub async fn get_screenshot(url: &str) -> anyhow::Result<Vec<u8>> {
     let caps = {
         let mut caps = serde_json::map::Map::new();
-        caps.insert("browserName".to_string(), serde_json::json!("chrome"));
+        caps.insert("browserName".to_string(), serde_json::json!("firefox"));
         caps.insert(
-            "goog:chromeOptions".to_string(),
+            "moz:firefoxOptions".to_string(),
             serde_json::json!({
-                "args": ["--headless", "--disable-gpu", "--window-size=1600,1600", "--no-sandbox", "--disable-dev-shm-usage"]
+                "args": ["--headless"]
             }),
         );
         caps
@@ -17,6 +17,8 @@ pub async fn get_screenshot(url: &str) -> anyhow::Result<Vec<u8>> {
         .capabilities(caps)
         .connect("http://localhost:4444")
         .await?;
+
+    client.set_window_size(1600, 1600).await?;
 
     client.goto(url).await?;
     client.wait().for_element(Locator::Css("canvas")).await?;

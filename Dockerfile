@@ -43,13 +43,13 @@ FROM debian:bookworm-slim as runtime
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     ca-certificates \
-    chromium-driver \
-    chromium \
+    curl \
     dumb-init \
+    firefox-esr \
     && \
     rm -rf /var/lib/apt/lists/*
 
-ENV CHROME_PATH=/usr/bin/chromium
+RUN curl -L "https://github.com/mozilla/geckodriver/releases/download/v0.35.0/geckodriver-v0.35.0-linux$(arch | sed 's/x86_64/64/' | sed 's/aarch64/-aarch64/').tar.gz" | tar -xz -C /usr/local/bin
 
 COPY --from=build /app/target/release/web_service /usr/local/bin/web_service
 COPY --from=build /app/target/release/map_service /usr/local/bin/map_service

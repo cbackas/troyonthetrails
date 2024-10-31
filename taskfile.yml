@@ -23,6 +23,7 @@ tasks:
   dev:
     aliases: [watch]
     cmds:
+      - geckodriver &
       - cargo watch -s 'task run-map'
     env:
       RUST_BACKTRACE: 1
