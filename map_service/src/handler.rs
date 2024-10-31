@@ -79,6 +79,14 @@ pub async fn image_handler(Query(query): Query<URLParams>) -> Response {
     };
     let data =
         match browser::get_screenshot(format!("http://localhost:7070/?{}", query).as_str()).await {
+            Ok(data) if data.is_empty() => {
+                tracing::warn!("Empty image data");
+                return Response::builder()
+                    .status(StatusCode::NO_CONTENT)
+                    .body(Body::empty())
+                    .unwrap()
+                    .into_response();
+            }
             Ok(data) => data,
             Err(e) => {
                 tracing::error!("Failed to get tab: {:?}", e);

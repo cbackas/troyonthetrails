@@ -381,7 +381,7 @@ pub async fn send_end_webhook(activity_id: Option<i64>) {
                         None => None,
                     };
                     if let (Ok(map_service_url), Some(polyline)) = (map_service_url, polyline) {
-                        let data = get_map_image(
+                        match get_map_image(
                             map_service_url,
                             URLParams {
                                 title: name.clone(),
@@ -394,12 +394,13 @@ pub async fn send_end_webhook(activity_id: Option<i64>) {
                                 as_image: Some(true),
                             },
                         )
-                        .await;
-                        if let Err(e) = data {
-                            tracing::error!("Failed to get map image: {}", e);
-                            None
-                        } else {
-                            Some(WebhookImage(data.unwrap()))
+                        .await
+                        {
+                            Ok(data) => Some(WebhookImage(data)),
+                            Err(e) => {
+                                tracing::error!("Failed to get map image: {}", e);
+                                None
+                            }
                         }
                     } else {
                         None
@@ -429,6 +430,11 @@ async fn get_map_image(map_service_url: String, url_params: URLParams) -> anyhow
         .query(&url_params)
         .send()
         .await?;
+
+    if response.status() == reqwest::StatusCode::NO_CONTENT {
+        return Err(anyhow::anyhow!("Empty image data"));
+    }
+
     let bytes = response.bytes().await?;
     let bytes: Vec<u8> = bytes.iter().cloned().collect();
     Ok(bytes)
