@@ -432,11 +432,16 @@ async fn get_map_image(map_service_url: String, url_params: URLParams) -> anyhow
         .await?;
 
     if response.status() == reqwest::StatusCode::NO_CONTENT {
-        return Err(anyhow::anyhow!("Empty image data"));
+        return Err(anyhow::anyhow!("Recived status code 204"));
     }
 
     let bytes = response.bytes().await?;
     let bytes: Vec<u8> = bytes.iter().cloned().collect();
+
+    if bytes.is_empty() {
+        return Err(anyhow::anyhow!("Empty image data"));
+    }
+
     Ok(bytes)
 }
 
