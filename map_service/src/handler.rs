@@ -128,6 +128,13 @@ pub async fn css_handler() -> impl axum::response::IntoResponse {
         .unwrap()
 }
 
+pub fn svg_response(contents: &str) -> impl axum::response::IntoResponse {
+    Response::builder()
+        .header("Content-Type", "image/svg+xml")
+        .body(contents.to_string())
+        .unwrap()
+}
+
 fn minutes_to_human_readable(seconds: i64) -> String {
     let minutes = seconds / 60;
     let hours = minutes / 60;

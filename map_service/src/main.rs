@@ -94,6 +94,34 @@ fn get_main_router() -> Router {
         .route("/", get(handler::route_handler))
         .route("/assets/index.js", get(handler::js_handler))
         .route("/assets/index.css", get(handler::css_handler))
+        .route(
+            "/assets/climb-svgrepo-com.svg",
+            get(|| async {
+                handler::svg_response(include_str!("../assets/climb-svgrepo-com.svg"))
+            }),
+        )
+        .route(
+            "/assets/lightning-charge-svgrepo-com.svg",
+            get(|| async {
+                handler::svg_response(include_str!("../assets/lightning-charge-svgrepo-com.svg"))
+            }),
+        )
+        .route(
+            "/assets/measure-2-svgrepo-com.svg",
+            get(|| async {
+                handler::svg_response(include_str!("../assets/measure-2-svgrepo-com.svg"))
+            }),
+        )
+        .route(
+            "/assets/speedometer-svgrepo-com.svg",
+            get(|| async {
+                handler::svg_response(include_str!("../assets/speedometer-svgrepo-com.svg"))
+            }),
+        )
+        .route(
+            "/assets/time-svgrepo-com.svg",
+            get(|| async { handler::svg_response(include_str!("../assets/time-svgrepo-com.svg")) }),
+        )
         .route("/healthcheck", get(|| async { "Ok" }))
 }
 
