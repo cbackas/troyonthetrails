@@ -18,6 +18,7 @@ ADD ./web_service/Cargo.toml /app/web_service/Cargo.toml
 # map service files
 ADD ./map_service/src /app/map_service/src
 ADD ./map_service/Cargo.toml /app/map_service/Cargo.toml
+COPY ./map_service/assets /app/map_service/assets
 COPY --from=map_assets /app/templates /app/map_service/templates
 # beacon worker files
 # ADD ./beacon_worker/src /app/beacon_worker/src
