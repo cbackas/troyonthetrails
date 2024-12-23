@@ -31,6 +31,14 @@ pub async fn process_beacon() {
         None => (None, None),
     };
 
+    // check if activity_id has already been populated
+    // strava is stupid and sometimes doesn't update beacon status
+    // assume the activity was uploaded if true
+    let activity_status = match activity_id {
+        Some(_) => Some(Status::Uploaded),
+        _ => activity_status,
+    };
+
     match activity_status {
         Some(Status::Active | Status::AutoPaused | Status::ManualPaused) => {
             tracing::trace!("Beacon data indicates troy is active on the trails");
