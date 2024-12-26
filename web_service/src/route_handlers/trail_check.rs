@@ -28,7 +28,7 @@ impl<'de> Deserialize<'de> for TrailStatus {
     {
         struct TrailStatusVisitor;
 
-        impl<'de> Visitor<'de> for TrailStatusVisitor {
+        impl Visitor<'_> for TrailStatusVisitor {
             type Value = TrailStatus;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
