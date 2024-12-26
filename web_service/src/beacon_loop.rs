@@ -35,21 +35,23 @@ pub async fn process_beacon() {
         activity_id,
         update_time,
         ..
-    } = match beacon_data.activity_id {
-        Some(_id) => match beacon_data.status {
-            Status::Uploaded | Status::Dicarded => beacon_data,
-            _ => {
-                // if activty ID exists and status is not uploaded or discarded,
-                // then the beacon data might be wrong
-                let mut beacon_data = beacon_data;
-                beacon_data.status = Status::Uploaded;
-                beacon_data
-            }
-        },
-        None => {
-            tracing::warn!("Failed to get beacon data: activity id not found");
-            return;
+    } = match (beacon_data.activity_id, &beacon_data.status) {
+        // has activity_id, status is already uploaded or discarded
+        (Some(_), Status::Uploaded | Status::Dicarded) => beacon_data,
+        // has activity_id, but status is neither uploaded nor discarded
+        (Some(_), _) => {
+            let mut beacon_data = beacon_data;
+            beacon_data.status = Status::Uploaded;
+            beacon_data
         }
+        // no activity_id, but Uploaded status (which is a lie)
+        (None, Status::Uploaded) => {
+            let mut beacon_data = beacon_data;
+            beacon_data.status = Status::Uploaded;
+            beacon_data
+        }
+        // no activity_id, and status is anything else
+        _ => beacon_data,
     };
 
     match status {
