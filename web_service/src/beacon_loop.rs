@@ -1,38 +1,61 @@
 use crate::{
     db_service, discord,
-    strava::{self, beacon::Status},
+    strava::{
+        self,
+        beacon::{BeaconData, Status},
+    },
 };
 
 pub async fn process_beacon() {
     let troy_status = db_service::get_troy_status().await;
 
-    if troy_status.beacon_url.is_none() && troy_status.is_on_trail {
-        tracing::warn!(
-            "Troy status indicates on the trails but no beacon url found, clearing troy status"
-        );
-        db_service::set_troy_status(false).await;
-        return;
-    }
-
-    let beacon_url = troy_status.beacon_url;
-    let beacon_data = match beacon_url {
-        Some(ref url) => match strava::beacon::get_beacon_data(url.to_string()).await {
-            Ok(data) => Some(data),
-            Err(e) => {
-                tracing::error!("Failed to get beacon data: {}", e);
-                None
+    let beacon_url = match troy_status.beacon_url {
+        Some(url) => url,
+        None => {
+            if troy_status.is_on_trail {
+                tracing::warn!(
+                "Troy status indicates on the trails but no beacon url found, clearing troy status"
+            );
+                db_service::set_troy_status(false).await;
             }
-        },
-        None => None,
+            return;
+        }
     };
 
-    let (activity_status, activity_id) = match beacon_data.clone() {
-        Some(data) => (Some(data.status), data.activity_id),
-        None => (None, None),
+    let beacon_data = match strava::beacon::get_beacon_data(beacon_url.to_string()).await {
+        Ok(data) => data,
+        Err(e) => {
+            tracing::error!("Failed to get beacon data: {}", e);
+            return;
+        }
     };
 
-    match activity_status {
-        Some(Status::Active | Status::AutoPaused | Status::ManualPaused) => {
+    let BeaconData {
+        status,
+        activity_id,
+        update_time,
+        ..
+    } = match (beacon_data.activity_id, &beacon_data.status) {
+        // has activity_id, status is already uploaded or discarded
+        (Some(_), Status::Uploaded | Status::Dicarded) => beacon_data,
+        // has activity_id, but status is neither uploaded nor discarded
+        (Some(_), _) => {
+            let mut beacon_data = beacon_data;
+            beacon_data.status = Status::Uploaded;
+            beacon_data
+        }
+        // no activity_id, but Uploaded status (which is a lie)
+        (None, Status::Uploaded) => {
+            let mut beacon_data = beacon_data;
+            beacon_data.status = Status::Uploaded;
+            beacon_data
+        }
+        // no activity_id, and status is anything else
+        _ => beacon_data,
+    };
+
+    match status {
+        Status::Active | Status::AutoPaused | Status::ManualPaused => {
             tracing::trace!("Beacon data indicates troy is active on the trails");
             db_service::set_troy_status(true).await;
             if !troy_status.is_on_trail {
@@ -40,7 +63,7 @@ pub async fn process_beacon() {
                 discord::send_starting_webhook(beacon_url).await;
             }
         }
-        Some(Status::Uploaded) => {
+        Status::Uploaded => {
             tracing::info!("Beacon data indicates activity uploaded, clearing beacon url");
             db_service::set_beacon_url(None).await;
             if troy_status.is_on_trail {
@@ -48,7 +71,7 @@ pub async fn process_beacon() {
                 discord::send_end_webhook(activity_id).await;
             }
         }
-        Some(Status::Dicarded) => {
+        Status::Dicarded => {
             tracing::info!(
                 "Beacon data indicates activity was discarded, clearing troy status and beacon url"
             );
@@ -58,10 +81,9 @@ pub async fn process_beacon() {
                 discord::send_discard_webhook().await;
             }
         }
-        Some(Status::NotStarted) => {
+        Status::NotStarted => {
             tracing::info!("Beacon data indicates activity is not started yet");
             let diff = {
-                let update_time = beacon_data.unwrap().update_time;
                 let update_time = update_time.datetime();
                 let now = chrono::Utc::now();
                 now - update_time
@@ -73,7 +95,6 @@ pub async fn process_beacon() {
                 db_service::set_beacon_url(None).await;
             }
         }
-        None => {}
         _ => {
             tracing::warn!("Beacon data indicates unknown status");
         }

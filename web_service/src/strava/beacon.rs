@@ -109,7 +109,7 @@ impl<'de> Deserialize<'de> for EpochDateTime {
     {
         struct EpochDateTimeVisitor;
 
-        impl<'de> Visitor<'de> for EpochDateTimeVisitor {
+        impl Visitor<'_> for EpochDateTimeVisitor {
             type Value = EpochDateTime;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

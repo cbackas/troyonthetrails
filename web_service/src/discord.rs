@@ -8,16 +8,14 @@ use crate::{
 };
 
 struct OnTrailsNotification {
-    beacon_url: Option<String>,
+    beacon_url: String,
 }
 
 impl From<OnTrailsNotification> for DiscordEmbed {
     fn from(val: OnTrailsNotification) -> Self {
         let mut embed: DiscordEmbed = DiscordEmbed::default();
         embed.title("Troy is on the trails!");
-        if let Some(beacon_url) = &val.beacon_url {
-            embed.description(beacon_url);
-        }
+        embed.description(&val.beacon_url);
         embed
     }
 }
@@ -338,7 +336,7 @@ async fn send_webhook(message: impl Into<DiscordMessage>) {
     }
 }
 
-pub async fn send_starting_webhook(beacon_url: Option<String>) {
+pub async fn send_starting_webhook(beacon_url: String) {
     send_webhook(OnTrailsNotification { beacon_url }).await;
 }
 
