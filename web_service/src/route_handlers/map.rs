@@ -50,34 +50,40 @@ impl MapImage {
         let (lat_values, lng_values): (Vec<f64>, Vec<f64>) =
             line_string.coords().map(|coord| (coord.y, coord.x)).unzip();
 
-        let key =
-            env_utils::get_thunderforest_api_key().expect("Failed to get Thunderforest API key");
-        let url_template =
-            "https://c.tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=".to_string() + &key;
+        let url_template = {
+            let key = env_utils::get_thunderforest_api_key()
+                .expect("Failed to get Thunderforest API key");
+            "https://c.tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=".to_string() + &key
+        };
 
-        let mut map = StaticMapBuilder::default()
-            .width(1600)
-            .height(1600)
-            .padding((10, 0))
-            .url_template(url_template)
-            .build()?;
+        let map_png = {
+            let line = LineBuilder::default()
+                .lat_coordinates(lat_values)
+                .lon_coordinates(lng_values)
+                .width(3.)
+                .simplify(true)
+                .color(staticmap::tools::Color::new(true, 255, 0, 0, 255))
+                .build()?;
 
-        let line = LineBuilder::default()
-            .lat_coordinates(lat_values)
-            .lon_coordinates(lng_values)
-            .width(3.)
-            .simplify(true)
-            .color(staticmap::tools::Color::new(true, 255, 0, 0, 255))
-            .build()?;
+            let mut map = StaticMapBuilder::default()
+                .width(1600)
+                .height(1600)
+                .padding((10, 0))
+                .url_template(url_template)
+                .build()?;
 
-        map.add_tool(line);
-        let png = map.encode_png()?;
-        Ok(png)
+            map.add_tool(line);
+            map.encode_png()?
+        };
+
+        Ok(map_png)
     }
 
     pub fn add_text(&mut self, text: &str, x: i32, y: i32, font_size: f32) -> &mut Self {
-        let dyanmic_image = &self.dynamic_img;
-        let mut rgba_img = dyanmic_image.to_rgba8();
+        let mut rgba_img = {
+            let dyanmic_img = &self.dynamic_img;
+            dyanmic_img.to_rgba8()
+        };
 
         let scale = PxScale {
             // horizontal scaling
