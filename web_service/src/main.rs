@@ -164,6 +164,7 @@ fn get_api_router() -> Router<SharedAppState> {
     Router::new()
         .route("/trail-check", get(route_handlers::trail_check::handler))
         .route("/troy-check", get(route_handlers::troy_check::handler))
+        .route("/map", get(route_handlers::map::handler))
         .nest(
             "/strava",
             Router::new()
