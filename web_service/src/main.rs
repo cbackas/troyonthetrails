@@ -87,7 +87,17 @@ async fn main() -> anyhow::Result<()> {
         .serve(
             get_main_router()
                 .with_state(SharedAppState::default())
-                .layer(axum::middleware::from_fn(uri_middleware))
+                .layer(axum::middleware::from_fn(
+                    |request: Request<_>, next: Next<_>| async move {
+                        let uri = request.uri().clone();
+
+                        let mut response = next.run(request).await;
+
+                        response.extensions_mut().insert(RequestUri(uri));
+
+                        response
+                    },
+                ))
                 .layer(TraceLayer::new_for_http().on_response(
                     |response: &Response, latency: std::time::Duration, _span: &Span| {
                         let url = match response.extensions().get::<RequestUri>().map(|r| &r.0) {
@@ -178,16 +188,6 @@ fn get_api_router() -> Router<SharedAppState> {
 }
 
 struct RequestUri(Uri);
-
-async fn uri_middleware<B>(request: Request<B>, next: Next<B>) -> Response {
-    let uri = request.uri().clone();
-
-    let mut response = next.run(request).await;
-
-    response.extensions_mut().insert(RequestUri(uri));
-
-    response
-}
 
 // loop that continuously checks the db for a beacon url and processes the data if found
 fn run_beacon_loop() {
