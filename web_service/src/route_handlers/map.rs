@@ -7,7 +7,7 @@ use axum::{extract::Query, response::Response};
 
 use ab_glyph::{FontRef, PxScale};
 use geo_types::LineString;
-use image::{load_from_memory, DynamicImage, ImageFormat};
+use image::{load_from_memory, DynamicImage, ImageFormat, Rgba};
 use imageproc::drawing::draw_text_mut;
 use polyline;
 use serde::Deserialize;
@@ -17,6 +17,52 @@ use staticmap::{tools::LineBuilder, StaticMapBuilder};
 #[derive(Deserialize)]
 pub struct MapParams {
     pub polyline: String,
+}
+
+struct TextOptions {
+    font_size: f32,
+    color: Rgba<u8>,
+}
+
+impl Default for TextOptions {
+    fn default() -> Self {
+        Self {
+            font_size: 60.0,
+            color: Rgba([255u8, 255u8, 255u8, 255u8]),
+        }
+    }
+}
+
+impl From<DefaultColors> for TextOptions {
+    fn from(color: DefaultColors) -> Self {
+        match color {
+            DefaultColors::White => Self::default(),
+            DefaultColors::Orange => Self {
+                color: Rgba([255u8, 165u8, 0u8, 255u8]),
+                ..Self::default()
+            },
+            DefaultColors::Blue => Self {
+                color: Rgba([0u8, 0u8, 255u8, 255u8]),
+                ..Self::default()
+            },
+            DefaultColors::Red => Self {
+                color: Rgba([255u8, 0u8, 0u8, 255u8]),
+                ..Self::default()
+            },
+            DefaultColors::Green => Self {
+                color: Rgba([0u8, 128u8, 0u8, 255u8]),
+                ..Self::default()
+            },
+        }
+    }
+}
+
+enum DefaultColors {
+    White,
+    Orange,
+    Blue,
+    Red,
+    Green,
 }
 
 struct MapImage {
@@ -62,7 +108,7 @@ impl MapImage {
                 .lon_coordinates(lng_values)
                 .width(3.)
                 .simplify(true)
-                .color(staticmap::tools::Color::new(true, 255, 0, 0, 255))
+                .color(staticmap::tools::Color::new(true, 255, 165, 0, 255))
                 .build()?;
 
             let mut map = StaticMapBuilder::default()
@@ -79,7 +125,15 @@ impl MapImage {
         Ok(map_png)
     }
 
-    pub fn add_text(&mut self, text: &str, x: i32, y: i32, font_size: f32) -> &mut Self {
+    pub fn add_text(
+        &mut self,
+        text: &str,
+        x: i32,
+        y: i32,
+        options: impl Into<TextOptions>,
+    ) -> &mut Self {
+        let options: TextOptions = options.into();
+
         let mut rgba_img = {
             let dyanmic_img = &self.dynamic_img;
             dyanmic_img.to_rgba8()
@@ -87,15 +141,12 @@ impl MapImage {
 
         let scale = PxScale {
             // horizontal scaling
-            x: font_size * 2.0,
+            x: options.font_size * 2.0,
             // Vertical scaling
-            y: font_size,
+            y: options.font_size,
         };
 
-        // define text color (Rgba<u8>)
-        let text_color = image::Rgba([255u8, 255u8, 255u8, 255u8]);
-
-        draw_text_mut(&mut rgba_img, text_color, x, y, scale, &self.font, text);
+        draw_text_mut(&mut rgba_img, options.color, x, y, scale, &self.font, text);
         self.dynamic_img = DynamicImage::ImageRgba8(rgba_img);
 
         self
@@ -111,18 +162,34 @@ impl MapImage {
 }
 
 pub async fn handler(params: Query<MapParams>) -> impl axum::response::IntoResponse {
-    let mut map_image = match MapImage::new(&params.polyline) {
-        Ok(map_image) => map_image,
+    let map_image = match MapImage::new(&params.polyline) {
+        Ok(mut map_image) => match map_image
+            .add_text("Hello, World1!", 1600 / 2 + 0, 1600 / 2, DefaultColors::Red)
+            .add_text(
+                "Hello, World2!",
+                1600 / 2,
+                1600 / 2 + 100,
+                DefaultColors::Orange,
+            )
+            .add_text(
+                "Hello, World3!",
+                1600 / 2,
+                1600 / 2 + 200,
+                DefaultColors::White,
+            )
+            .encode_png()
+        {
+            Ok(map_image) => map_image,
+            Err(err) => {
+                tracing::error!("Failed to encode map image: {:?}", err);
+                return axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            }
+        },
         Err(err) => {
             tracing::error!("Failed to create map image: {:?}", err);
             return axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
-    map_image
-        .add_text("Hello, World1!", 1600 / 2, 1600 / 2, 60.0)
-        .add_text("Hello, World2!", 1600 / 2, 1600 / 2 + 100, 60.0)
-        .add_text("Hello, World3!", 1600 / 2, 1600 / 2 + 200, 60.0);
-    let map_image = map_image.encode_png().expect("Failed to build map image");
 
     Response::builder()
         .status(axum::http::StatusCode::OK)
