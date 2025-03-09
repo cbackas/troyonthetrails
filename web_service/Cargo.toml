@@ -32,4 +32,6 @@ image = "0.25.5"
 ab_glyph = "0.2.29"
 imageproc = "0.25.0"
 geo-types = "0.7.15"
+tiny-skia = "0.11.4"
+resvg = "0.45.0"
 
