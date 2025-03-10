@@ -7,8 +7,7 @@ use axum::{extract::Query, response::Response};
 
 use ab_glyph::{FontRef, PxScale};
 use geo_types::LineString;
-use image::imageops::colorops::brighten_in_place;
-use image::{load_from_memory, DynamicImage, ImageFormat, Rgba};
+use image::{load_from_memory, DynamicImage, ImageFormat, Rgba, RgbaImage};
 use imageproc::drawing::{draw_text_mut, text_size};
 use polyline;
 use serde::Deserialize;
@@ -23,16 +22,27 @@ pub struct MapParams {
     pub polyline: String,
 }
 
-struct TextOptions {
-    font_size: f32,
-    color: Rgba<u8>,
+#[derive(Debug, Copy, Clone)]
+pub enum TextAlignment {
+    Center,
+    Left,
+    Right,
+}
+
+// Add to TextOptions
+#[derive(Debug, Clone)]
+pub struct TextOptions {
+    pub color: Rgba<u8>,
+    pub font_size: f32,
+    pub alignment: TextAlignment, // New field
 }
 
 impl Default for TextOptions {
     fn default() -> Self {
         Self {
-            font_size: 60.0,
-            color: Rgba([255u8, 255u8, 255u8, 255u8]),
+            color: Rgba([255, 255, 255, 255]),
+            font_size: 38.0,
+            alignment: TextAlignment::Center, // Default to center
         }
     }
 }
@@ -115,6 +125,11 @@ impl Tool for Darken {
 
 enum TextElement {
     Text(String, TextOptions),
+    TextWithSVG {
+        text: String,
+        options: TextOptions,
+        svg_data: Vec<u8>,
+    },
     Spacer,
 }
 
@@ -187,11 +202,7 @@ impl MapImage {
             map.add_tool(darken);
             map.add_tool(line);
             let map_image = map.encode_png()?;
-
-            let mut map_image = load_from_memory(&map_image)?;
-            // brighten_in_place(&mut map_image, -30);
-
-            map_image
+            load_from_memory(&map_image)?
         };
 
         Ok(map_png)
@@ -203,13 +214,28 @@ impl MapImage {
         self
     }
 
+    pub fn add_text_with_svg(
+        &mut self,
+        text: &str,
+        options: impl Into<TextOptions>,
+        svg_data: &[u8],
+    ) -> &mut Self {
+        self.elements.push(TextElement::TextWithSVG {
+            text: text.to_owned(),
+            options: options.into(),
+            svg_data: svg_data.to_vec(),
+        });
+        self
+    }
+
     pub fn add_spacer(&mut self) -> &mut Self {
         self.elements.push(TextElement::Spacer);
         self
     }
 
     fn draw_all_text(&mut self) {
-        const LINE_SPACING: i32 = 100;
+        const LINE_SPACING: i32 = 60;
+        const HORIZONTAL_PADDING: i32 = 250;
         const IMAGE_WIDTH: i32 = MapImage::IMAGE_WIDTH as i32;
         const IMAGE_HEIGHT: i32 = MapImage::IMAGE_HEIGHT as i32;
 
@@ -219,23 +245,25 @@ impl MapImage {
             .filter(|e| matches!(e, TextElement::Text(_, _)))
             .count();
         let total_height = total_elements as i32 * LINE_SPACING;
-        let mut current_y = (IMAGE_HEIGHT / 2) - (total_height / 2);
+        let mut current_y = (IMAGE_HEIGHT / 3) - (total_height / 2);
 
         let mut rgba_img = self.dynamic_img.to_rgba8();
 
         for element in &self.elements {
             match element {
                 TextElement::Text(text, options) => {
-                    let scale = PxScale {
-                        x: options.font_size * 2.0,
-                        y: options.font_size,
-                    };
+                    let scale = PxScale::from(2.0 * options.font_size);
 
-                    // Calculate text dimensions
+                    // text dimensions
                     let (text_width, _) = text_size(scale, &self.font, text);
 
-                    // Calculate positions
-                    let x = (IMAGE_WIDTH - text_width as i32) / 2;
+                    let x = match options.alignment {
+                        TextAlignment::Center => (IMAGE_WIDTH - text_width as i32) / 2,
+                        TextAlignment::Left => HORIZONTAL_PADDING,
+                        TextAlignment::Right => {
+                            IMAGE_WIDTH - text_width as i32 - HORIZONTAL_PADDING
+                        }
+                    };
 
                     draw_text_mut(
                         &mut rgba_img,
@@ -248,6 +276,59 @@ impl MapImage {
                     );
                     current_y += LINE_SPACING;
                 }
+
+                TextElement::TextWithSVG {
+                    text,
+                    options,
+                    svg_data,
+                } => {
+                    let svg_img = self
+                        .render_svg(svg_data, options.font_size)
+                        .expect("Failed to render SVG");
+
+                    // combined width
+                    let (text_width, _) = text_size(
+                        PxScale {
+                            x: options.font_size * 2.0,
+                            y: options.font_size,
+                        },
+                        &self.font,
+                        text,
+                    );
+
+                    let spacing = 30;
+
+                    let total_width = svg_img.width() as i32 + spacing + text_width as i32;
+
+                    let start_x = match options.alignment {
+                        TextAlignment::Center => (IMAGE_WIDTH - total_width) / 2,
+                        TextAlignment::Left => HORIZONTAL_PADDING,
+                        TextAlignment::Right => IMAGE_WIDTH - total_width - HORIZONTAL_PADDING,
+                    };
+
+                    image::imageops::overlay(
+                        &mut rgba_img,
+                        &svg_img,
+                        start_x as i64,
+                        current_y as i64,
+                    );
+
+                    draw_text_mut(
+                        &mut rgba_img,
+                        options.color,
+                        start_x + svg_img.width() as i32 + spacing,
+                        current_y,
+                        PxScale {
+                            x: options.font_size * 2.0,
+                            y: options.font_size,
+                        },
+                        &self.font,
+                        text,
+                    );
+
+                    current_y += LINE_SPACING;
+                }
+
                 TextElement::Spacer => {
                     current_y += LINE_SPACING;
                 }
@@ -255,6 +336,53 @@ impl MapImage {
         }
 
         self.dynamic_img = DynamicImage::ImageRgba8(rgba_img);
+    }
+
+    fn render_svg(&self, svg_data: &[u8], target_height: f32) -> anyhow::Result<RgbaImage> {
+        let opt = usvg::Options {
+            resources_dir: None,
+            font_family: "Arial".to_string(),
+            font_size: target_height,
+            ..usvg::Options::default()
+        };
+
+        let tree = usvg::Tree::from_data(svg_data, &opt)
+            .map_err(|e| anyhow::anyhow!("SVG parse error: {}", e))?;
+
+        let (_w, h) = tree.size().to_int_size().dimensions();
+        let scale = if h > 0 { target_height / h as f32 } else { 2.0 };
+
+        let pixmap_size = tree
+            .size()
+            .to_int_size()
+            .scale_by(scale)
+            .expect("Invalid SVG dimensions");
+
+        let pixmap = {
+            let mut pixmap = tiny_skia::Pixmap::new(pixmap_size.width(), pixmap_size.height())
+                .ok_or_else(|| anyhow::anyhow!("Invalid SVG dimensions"))?;
+
+            resvg::render(
+                &tree,
+                tiny_skia::Transform::from_scale(scale, scale),
+                &mut pixmap.as_mut(),
+            );
+
+            pixmap
+        };
+
+        let mut img_data = pixmap.data().to_vec();
+        for pixel in img_data.chunks_exact_mut(4) {
+            let a = pixel[3] as f32 / 255.0;
+            if a > 0.0 {
+                pixel[0] = (pixel[0] as f32 / a).min(255.0) as u8;
+                pixel[1] = (pixel[1] as f32 / a).min(255.0) as u8;
+                pixel[2] = (pixel[2] as f32 / a).min(255.0) as u8;
+            }
+        }
+
+        RgbaImage::from_raw(pixmap.width(), pixmap.height(), img_data)
+            .ok_or_else(|| anyhow::anyhow!("Failed to create image buffer"))
     }
 
     pub fn encode_png(&mut self) -> anyhow::Result<Vec<u8>> {
@@ -268,14 +396,36 @@ impl MapImage {
 }
 
 pub async fn handler(params: Query<MapParams>) -> impl axum::response::IntoResponse {
+    let left_aligned = TextOptions {
+        color: Rgba([255, 255, 255, 255]),
+        font_size: 36.0,
+        alignment: TextAlignment::Left,
+    };
+
     let map_image = match MapImage::new(&params.polyline) {
         Ok(mut map_image) => match map_image
             .add_text("1 hour, 36 minute ride", DefaultColors::White)
             .add_spacer()
-            .add_text("Rode 7.8 miles", DefaultColors::White)
-            .add_text("Climbed 445.9 feet", DefaultColors::White)
-            .add_text("Average speed of 2.8 mph", DefaultColors::White)
-            .add_text("Top speed of 9.0 mph", DefaultColors::White)
+            .add_text_with_svg(
+                "Rode 7.8 miles",
+                left_aligned.clone(),
+                include_bytes!("../../assets/measure-2-svgrepo-com.svg"),
+            )
+            .add_text_with_svg(
+                "Climbed 445.9 feet",
+                left_aligned.clone(),
+                include_bytes!("../../assets/climb-svgrepo-com.svg"),
+            )
+            .add_text_with_svg(
+                "Average speed of 2.8 mph",
+                left_aligned.clone(),
+                include_bytes!("../../assets/speedometer-svgrepo-com.svg"),
+            )
+            .add_text_with_svg(
+                "Top speed of 9.0 mph",
+                left_aligned.clone(),
+                include_bytes!("../../assets/lightning-charge-svgrepo-com.svg"),
+            )
             .encode_png()
         {
             Ok(map_image) => map_image,
