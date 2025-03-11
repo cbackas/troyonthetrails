@@ -20,6 +20,8 @@ use tiny_skia::{PixmapMut, Transform};
 #[derive(Deserialize)]
 pub struct MapParams {
     pub polyline: String,
+const IMAGE_WIDTH: u32 = 900;
+const IMAGE_HEIGHT: u32 = 900;
 #[derive(Debug, Copy, Clone)]
 pub enum DefaultColor {
     White,
@@ -82,7 +84,7 @@ impl Tool for Darken {
     }
 
     fn draw(&self, _bounds: &Bounds, mut pixmap: PixmapMut) {
-        let mut cover_pixmap = tiny_skia::Pixmap::new(1000, 1000).unwrap();
+        let mut cover_pixmap = tiny_skia::Pixmap::new(IMAGE_WIDTH, IMAGE_HEIGHT).unwrap();
         let mut cover_pixmap = cover_pixmap.as_mut();
         cover_pixmap.fill(tiny_skia::Color::from_rgba8(0, 0, 0, 255));
         let cover_pixmap = cover_pixmap.as_ref();
@@ -114,9 +116,6 @@ struct MapImage {
 }
 
 impl MapImage {
-    const IMAGE_WIDTH: u32 = 1000;
-    const IMAGE_HEIGHT: u32 = 1000;
-
     pub fn new(polyline: &str) -> anyhow::Result<Self> {
         let font = {
             let font_data = include_bytes!("../../assets/AntonSC-Regular.ttf");
@@ -166,8 +165,8 @@ impl MapImage {
             };
 
             let mut map = StaticMapBuilder::default()
-                .width(Self::IMAGE_WIDTH)
-                .height(Self::IMAGE_HEIGHT)
+                .width(IMAGE_WIDTH)
+                .height(IMAGE_HEIGHT)
                 .padding((5, 0))
                 .url_template(url_template)
                 .build()?;
@@ -209,8 +208,8 @@ impl MapImage {
     fn draw_all_text(&mut self) {
         const LINE_SPACING: i32 = 60;
         const HORIZONTAL_PADDING: i32 = 250;
-        const IMAGE_WIDTH: i32 = MapImage::IMAGE_WIDTH as i32;
-        const IMAGE_HEIGHT: i32 = MapImage::IMAGE_HEIGHT as i32;
+        const IIMAGE_WIDTH: i32 = IMAGE_WIDTH as i32;
+        const IIMAGE_HEIGHT: i32 = IMAGE_HEIGHT as i32;
 
         let total_elements = self
             .elements
@@ -218,7 +217,7 @@ impl MapImage {
             .filter(|e| matches!(e, TextElement::Text(_, _)))
             .count();
         let total_height = total_elements as i32 * LINE_SPACING;
-        let mut current_y = (IMAGE_HEIGHT / 3) - (total_height / 2);
+        let mut current_y = (IIMAGE_HEIGHT / 3) - (total_height / 2);
 
         let mut rgba_img = self.dynamic_img.to_rgba8();
 
@@ -231,10 +230,10 @@ impl MapImage {
                     let (text_width, _) = text_size(scale, &self.font, text);
 
                     let x = match options.alignment {
-                        TextAlignment::Center => (IMAGE_WIDTH - text_width as i32) / 2,
+                        TextAlignment::Center => (IIMAGE_WIDTH - text_width as i32) / 2,
                         TextAlignment::Left => HORIZONTAL_PADDING,
                         TextAlignment::Right => {
-                            IMAGE_WIDTH - text_width as i32 - HORIZONTAL_PADDING
+                            IIMAGE_WIDTH - text_width as i32 - HORIZONTAL_PADDING
                         }
                     };
 
@@ -274,9 +273,9 @@ impl MapImage {
                     let total_width = svg_img.width() as i32 + spacing + text_width as i32;
 
                     let start_x = match options.alignment {
-                        TextAlignment::Center => (IMAGE_WIDTH - total_width) / 2,
+                        TextAlignment::Center => (IIMAGE_WIDTH - total_width) / 2,
                         TextAlignment::Left => HORIZONTAL_PADDING,
-                        TextAlignment::Right => IMAGE_WIDTH - total_width - HORIZONTAL_PADDING,
+                        TextAlignment::Right => IIMAGE_WIDTH - total_width - HORIZONTAL_PADDING,
                     };
 
                     image::imageops::overlay(
@@ -368,11 +367,9 @@ impl MapImage {
     }
 }
 
-pub async fn handler(params: Query<MapParams>) -> impl axum::response::IntoResponse {
-    let left_aligned = TextOptions {
-        color: Rgba([255, 255, 255, 255]),
-        font_size: 36.0,
-        alignment: TextAlignment::Left,
+pub async fn handler(
+    params: Query<shared_lib::structs::URLParams>,
+) -> impl axum::response::IntoResponse {
     let polyline = match &params.polyline {
         Some(polyline) => polyline,
         None => {
