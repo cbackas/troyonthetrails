@@ -20,6 +20,25 @@ use tiny_skia::{PixmapMut, Transform};
 #[derive(Deserialize)]
 pub struct MapParams {
     pub polyline: String,
+#[derive(Debug, Copy, Clone)]
+pub enum DefaultColor {
+    White,
+    Orange,
+    Blue,
+    Red,
+    Green,
+}
+
+impl From<DefaultColor> for Rgba<u8> {
+    fn from(val: DefaultColor) -> Self {
+        match val {
+            DefaultColor::White => Rgba([255, 255, 255, 255]),
+            DefaultColor::Orange => Rgba([255, 165, 0, 255]),
+            DefaultColor::Blue => Rgba([0, 0, 255, 255]),
+            DefaultColor::Red => Rgba([255, 0, 0, 255]),
+            DefaultColor::Green => Rgba([0, 128, 0, 255]),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -32,7 +51,7 @@ pub enum TextAlignment {
 // Add to TextOptions
 #[derive(Debug, Clone)]
 pub struct TextOptions {
-    pub color: Rgba<u8>,
+    pub color: DefaultColor,
     pub font_size: f32,
     pub alignment: TextAlignment, // New field
 }
@@ -40,43 +59,16 @@ pub struct TextOptions {
 impl Default for TextOptions {
     fn default() -> Self {
         Self {
-            color: Rgba([255, 255, 255, 255]),
+            color: DefaultColor::White,
             font_size: 38.0,
             alignment: TextAlignment::Center, // Default to center
         }
     }
 }
 
-impl From<DefaultColors> for TextOptions {
-    fn from(color: DefaultColors) -> Self {
-        match color {
-            DefaultColors::White => Self::default(),
-            DefaultColors::Orange => Self {
-                color: Rgba([255u8, 165u8, 0u8, 255u8]),
-                ..Self::default()
-            },
-            DefaultColors::Blue => Self {
-                color: Rgba([0u8, 0u8, 255u8, 255u8]),
-                ..Self::default()
-            },
-            DefaultColors::Red => Self {
-                color: Rgba([255u8, 0u8, 0u8, 255u8]),
-                ..Self::default()
-            },
-            DefaultColors::Green => Self {
-                color: Rgba([0u8, 128u8, 0u8, 255u8]),
-                ..Self::default()
-            },
+            alignment: TextAlignment::Center,
         }
     }
-}
-
-enum DefaultColors {
-    White,
-    Orange,
-    Blue,
-    Red,
-    Green,
 }
 
 struct Darken {
@@ -248,7 +240,7 @@ impl MapImage {
 
                     draw_text_mut(
                         &mut rgba_img,
-                        options.color,
+                        options.color.into(),
                         x,
                         current_y,
                         scale,
@@ -296,7 +288,7 @@ impl MapImage {
 
                     draw_text_mut(
                         &mut rgba_img,
-                        options.color,
+                        options.color.into(),
                         start_x + svg_img.width() as i32 + spacing,
                         current_y,
                         PxScale {
@@ -381,42 +373,107 @@ pub async fn handler(params: Query<MapParams>) -> impl axum::response::IntoRespo
         color: Rgba([255, 255, 255, 255]),
         font_size: 36.0,
         alignment: TextAlignment::Left,
+    let polyline = match &params.polyline {
+        Some(polyline) => polyline,
+        None => {
+            tracing::error!("Missing polyline parameter");
+            return axum::http::StatusCode::BAD_REQUEST.into_response();
+        }
     };
 
-    let map_image = match MapImage::new(&params.polyline) {
-        Ok(mut map_image) => match map_image
-            .add_text("1 hour, 36 minute ride", DefaultColors::White)
-            .add_spacer()
-            .add_text_with_svg(
-                "Rode 7.8 miles",
-                left_aligned.clone(),
-                include_bytes!("../../assets/measure-2-svgrepo-com.svg"),
-            )
-            .add_text_with_svg(
-                "Climbed 445.9 feet",
-                left_aligned.clone(),
-                include_bytes!("../../assets/climb-svgrepo-com.svg"),
-            )
-            .add_text_with_svg(
-                "Average speed of 2.8 mph",
-                left_aligned.clone(),
-                include_bytes!("../../assets/speedometer-svgrepo-com.svg"),
-            )
-            .add_text_with_svg(
-                "Top speed of 9.0 mph",
-                left_aligned.clone(),
-                include_bytes!("../../assets/lightning-charge-svgrepo-com.svg"),
-            )
-            .encode_png()
-        {
-            Ok(map_image) => map_image,
-            Err(err) => {
-                tracing::error!("Failed to encode map image: {:?}", err);
-                return axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response();
-            }
-        },
+    const TITLE_ROW_HIGHT: f32 = 65.0;
+    const DATA_ROW_HEIGHT: f32 = 38.0;
+
+    let mut map_image = match MapImage::new(polyline) {
+        Ok(map_image) => map_image,
         Err(err) => {
             tracing::error!("Failed to create map image: {:?}", err);
+            return axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
+
+    if let Some(title) = &params.title {
+        map_image
+            .add_text(
+                title,
+                TextOptions {
+                    color: DefaultColor::White,
+                    font_size: TITLE_ROW_HIGHT,
+                    alignment: TextAlignment::Center,
+                },
+            )
+            .add_spacer()
+            .add_spacer();
+    }
+
+    if let Some(duration) = params.duration {
+        let duration = shared_lib::utils::minutes_to_human_readable(duration);
+        map_image
+            .add_text(
+                format!("{} ride", duration).as_str(),
+                TextOptions {
+                    color: DefaultColor::White,
+                    font_size: DATA_ROW_HEIGHT,
+                    alignment: TextAlignment::Center,
+                },
+            )
+            .add_spacer();
+    }
+
+    if let Some(distance) = params.distance {
+        let distance = shared_lib::utils::meters_to_miles(distance, false);
+        map_image.add_text_with_svg(
+            format!("Rode {} miles", distance).as_str(),
+            TextOptions {
+                color: DefaultColor::White,
+                font_size: DATA_ROW_HEIGHT,
+                alignment: TextAlignment::Left,
+            },
+            include_bytes!("../../assets/measure-2-svgrepo-com.svg"),
+        );
+    }
+
+    if let Some(elevation_gain) = params.elevation_gain {
+        let elevation_gain = shared_lib::utils::meters_to_feet(elevation_gain, false);
+        map_image.add_text_with_svg(
+            format!("Climbed {} feet", elevation_gain).as_str(),
+            TextOptions {
+                color: DefaultColor::White,
+                font_size: DATA_ROW_HEIGHT,
+                alignment: TextAlignment::Left,
+            },
+            include_bytes!("../../assets/climb-svgrepo-com.svg"),
+        );
+    }
+
+    if let Some(average_speed) = params.average_speed {
+        map_image.add_text_with_svg(
+            format!("Average speed of {:.1} mph", average_speed).as_str(),
+            TextOptions {
+                color: DefaultColor::White,
+                font_size: DATA_ROW_HEIGHT,
+                alignment: TextAlignment::Left,
+            },
+            include_bytes!("../../assets/speedometer-svgrepo-com.svg"),
+        );
+    }
+
+    if let Some(top_speed) = params.top_speed {
+        map_image.add_text_with_svg(
+            format!("Top speed of {:.1} mph", top_speed).as_str(),
+            TextOptions {
+                color: DefaultColor::White,
+                font_size: DATA_ROW_HEIGHT,
+                alignment: TextAlignment::Left,
+            },
+            include_bytes!("../../assets/lightning-charge-svgrepo-com.svg"),
+        );
+    }
+
+    let map_image = match map_image.encode_png() {
+        Ok(map_image) => map_image,
+        Err(err) => {
+            tracing::error!("Failed to encode map image: {:?}", err);
             return axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
