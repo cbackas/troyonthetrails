@@ -384,12 +384,11 @@ pub async fn send_end_webhook(activity_id: Option<i64>) {
                             URLParams {
                                 title: name.clone(),
                                 polyline: Some(polyline),
-                                duration: Some(activity.elapsed_time.to_string()),
-                                distance: Some(activity.distance.to_string()),
-                                elevation_gain: Some(activity.total_elevation_gain.to_string()),
-                                average_speed: Some(activity.average_speed.to_string()),
-                                top_speed: Some(activity.max_speed.to_string()),
-                                as_image: Some(true),
+                                duration: Some(activity.elapsed_time),
+                                distance: Some(activity.distance),
+                                elevation_gain: Some(activity.total_elevation_gain),
+                                average_speed: Some(activity.average_speed),
+                                top_speed: Some(activity.max_speed),
                             },
                         )
                         .await
