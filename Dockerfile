@@ -4,7 +4,7 @@ ADD ./shared_lib/src /app/shared_lib/src
 ADD ./shared_lib/Cargo.toml /app/shared_lib/Cargo.toml
 # web service files
 ADD ./web_service/src /app/web_service/src
-ADD ./web_service/assets /app/assets
+ADD ./web_service/assets /app/web_service/assets
 ADD ./web_service/templates /app/web_service/templates
 ADD ./web_service/Cargo.toml /app/web_service/Cargo.toml
 # beacon worker files
