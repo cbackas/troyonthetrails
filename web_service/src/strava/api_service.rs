@@ -18,8 +18,8 @@ use super::auth;
 pub struct StravaTotals {
     pub count: u32,
     pub distance: f64,
-    pub moving_time: u64,
-    pub elapsed_time: u64,
+    pub moving_time: f64,
+    pub elapsed_time: f64,
     pub elevation_gain: f64,
     pub achievement_count: Option<u32>,
 }
