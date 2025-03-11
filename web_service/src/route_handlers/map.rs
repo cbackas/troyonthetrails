@@ -201,7 +201,7 @@ impl MapImage {
         const LINE_SPACING: i32 = 60;
         const IIMAGE_WIDTH: i32 = IMAGE_WIDTH as i32;
         const IIMAGE_HEIGHT: i32 = IMAGE_HEIGHT as i32;
-        const HORIZONTAL_PADDING: i32 = IIMAGE_WIDTH / 8;
+        const HORIZONTAL_PADDING: i32 = IIMAGE_WIDTH / 6;
 
         let total_elements = self
             .elements
@@ -216,7 +216,11 @@ impl MapImage {
         for element in &self.elements {
             match element {
                 TextElement::Text(text, options) => {
-                    let scale = PxScale::from(2.0 * options.font_size);
+                    // let scale = PxScale::from(2.0 * options.font_size);
+                    let scale = PxScale {
+                        x: options.font_size * 2.0,
+                        y: options.font_size,
+                    };
 
                     // text dimensions
                     let (text_width, _) = text_size(scale, &self.font, text);
@@ -250,15 +254,13 @@ impl MapImage {
                         .render_svg(svg_data, options.font_size)
                         .expect("Failed to render SVG");
 
+                    let scale = PxScale {
+                        x: options.font_size * 2.0,
+                        y: options.font_size,
+                    };
+
                     // combined width
-                    let (text_width, _) = text_size(
-                        PxScale {
-                            x: options.font_size * 2.0,
-                            y: options.font_size,
-                        },
-                        &self.font,
-                        text,
-                    );
+                    let (text_width, _) = text_size(scale, &self.font, text);
 
                     let spacing = 15;
 
@@ -282,10 +284,7 @@ impl MapImage {
                         options.color.into(),
                         start_x + svg_img.width() as i32 + spacing,
                         current_y,
-                        PxScale {
-                            x: options.font_size * 2.0,
-                            y: options.font_size,
-                        },
+                        scale,
                         &self.font,
                         text,
                     );
