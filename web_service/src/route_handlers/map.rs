@@ -10,18 +10,15 @@ use geo_types::LineString;
 use image::{load_from_memory, DynamicImage, ImageFormat, Rgba, RgbaImage};
 use imageproc::drawing::{draw_text_mut, text_size};
 use polyline;
-use serde::Deserialize;
 use shared_lib::env_utils;
 use staticmap::tools::Tool;
 use staticmap::Bounds;
 use staticmap::{tools::LineBuilder, StaticMapBuilder};
 use tiny_skia::{PixmapMut, Transform};
 
-#[derive(Deserialize)]
-pub struct MapParams {
-    pub polyline: String,
 const IMAGE_WIDTH: u32 = 900;
 const IMAGE_HEIGHT: u32 = 900;
+
 #[derive(Debug, Copy, Clone)]
 pub enum DefaultColor {
     White,
@@ -55,7 +52,7 @@ pub enum TextAlignment {
 pub struct TextOptions {
     pub color: DefaultColor,
     pub font_size: f32,
-    pub alignment: TextAlignment, // New field
+    pub alignment: TextAlignment,
 }
 
 impl Default for TextOptions {
@@ -63,11 +60,6 @@ impl Default for TextOptions {
         Self {
             color: DefaultColor::White,
             font_size: 38.0,
-            alignment: TextAlignment::Center, // Default to center
-        }
-    }
-}
-
             alignment: TextAlignment::Center,
         }
     }
@@ -160,7 +152,7 @@ impl MapImage {
                 .build()?;
 
             let darken = Darken {
-                opacity: 0.5,
+                opacity: 0.65,
                 extent: line.extent(0, 0.0),
             };
 
@@ -207,9 +199,9 @@ impl MapImage {
 
     fn draw_all_text(&mut self) {
         const LINE_SPACING: i32 = 60;
-        const HORIZONTAL_PADDING: i32 = 250;
         const IIMAGE_WIDTH: i32 = IMAGE_WIDTH as i32;
         const IIMAGE_HEIGHT: i32 = IMAGE_HEIGHT as i32;
+        const HORIZONTAL_PADDING: i32 = IIMAGE_WIDTH / 8;
 
         let total_elements = self
             .elements
@@ -217,7 +209,7 @@ impl MapImage {
             .filter(|e| matches!(e, TextElement::Text(_, _)))
             .count();
         let total_height = total_elements as i32 * LINE_SPACING;
-        let mut current_y = (IIMAGE_HEIGHT / 3) - (total_height / 2);
+        let mut current_y = (IIMAGE_HEIGHT / 4) - (total_height / 2);
 
         let mut rgba_img = self.dynamic_img.to_rgba8();
 
@@ -268,7 +260,7 @@ impl MapImage {
                         text,
                     );
 
-                    let spacing = 30;
+                    let spacing = 15;
 
                     let total_width = svg_img.width() as i32 + spacing + text_width as i32;
 
