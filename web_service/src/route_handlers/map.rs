@@ -81,30 +81,12 @@ enum DefaultColors {
 
 struct Darken {
     opacity: f32,
-    lat_coordinates: Vec<f64>,
-    lon_coordinates: Vec<f64>,
+    extent: (f64, f64, f64, f64),
 }
 
 impl Tool for Darken {
     fn extent(&self, _: u8, _: f64) -> (f64, f64, f64, f64) {
-        (
-            self.lon_coordinates
-                .iter()
-                .copied()
-                .fold(f64::NAN, f64::min),
-            self.lat_coordinates
-                .iter()
-                .copied()
-                .fold(f64::NAN, f64::min),
-            self.lon_coordinates
-                .iter()
-                .copied()
-                .fold(f64::NAN, f64::max),
-            self.lat_coordinates
-                .iter()
-                .copied()
-                .fold(f64::NAN, f64::max),
-        )
+        self.extent
     }
 
     fn draw(&self, _bounds: &Bounds, mut pixmap: PixmapMut) {
@@ -188,8 +170,7 @@ impl MapImage {
 
             let darken = Darken {
                 opacity: 0.5,
-                lat_coordinates: lat_values,
-                lon_coordinates: lng_values,
+                extent: line.extent(0, 0.0),
             };
 
             let mut map = StaticMapBuilder::default()
