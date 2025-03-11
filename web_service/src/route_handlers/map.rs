@@ -44,7 +44,6 @@ impl From<DefaultColor> for Rgba<u8> {
 pub enum TextAlignment {
     Center,
     Left,
-    Right,
 }
 
 // Add to TextOptions
@@ -228,9 +227,6 @@ impl MapImage {
                     let x = match options.alignment {
                         TextAlignment::Center => (IIMAGE_WIDTH - text_width as i32) / 2,
                         TextAlignment::Left => HORIZONTAL_PADDING,
-                        TextAlignment::Right => {
-                            IIMAGE_WIDTH - text_width as i32 - HORIZONTAL_PADDING
-                        }
                     };
 
                     draw_text_mut(
@@ -269,7 +265,6 @@ impl MapImage {
                     let start_x = match options.alignment {
                         TextAlignment::Center => (IIMAGE_WIDTH - total_width) / 2,
                         TextAlignment::Left => HORIZONTAL_PADDING,
-                        TextAlignment::Right => IIMAGE_WIDTH - total_width - HORIZONTAL_PADDING,
                     };
 
                     image::imageops::overlay(
