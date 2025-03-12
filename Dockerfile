@@ -20,12 +20,11 @@ FROM node:bookworm-slim as web_assets
 WORKDIR /app
 ADD ./web_service/package.json /app/package.json
 ADD ./web_service/package-lock.json /app/package-lock.json
-ADD ./web_service/tailwind.config.cjs /app/tailwind.config.cjs
 ADD ./web_service/assets /app/assets
 ADD ./web_service/styles /app/styles
 ADD ./web_service/templates /app/templates
 RUN npm ci
-RUN npx tailwindcss -i ./styles/tailwind.css -o ./assets/main.css
+RUN npm run tailwind:generate
 
 FROM debian:bookworm-slim as runtime
 RUN apt-get update && \
