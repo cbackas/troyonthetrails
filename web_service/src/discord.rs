@@ -344,7 +344,7 @@ pub async fn send_end_webhook(activity_id: Option<i64>) {
         Some(activity_id) => match strava::api_service::get_activity(activity_id).await {
             Ok(activity) => Some(activity),
             Err(e) => {
-                tracing::error!("Failed to get last activity: {}", e);
+                tracing::error!("Failed to get last activity: {:?}", e);
                 None
             }
         },
@@ -524,7 +524,7 @@ mod tests {
 
         let _db = crate::db_service::get_db_service().await;
 
-        let activity_id = 13847553249;
+        let activity_id = 13865285076;
         send_end_webhook(Some(activity_id)).await;
     }
 }
