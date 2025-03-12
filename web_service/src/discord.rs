@@ -420,7 +420,7 @@ async fn get_map_image(
     average_speed: f64,
     top_speed: f64,
 ) -> anyhow::Result<Vec<u8>> {
-    const TITLE_ROW_HEIGHT: f32 = 65.0;
+    const TITLE_ROW_HEIGHT: f32 = 50.0;
     const DATA_ROW_HEIGHT: f32 = 36.0;
 
     let mut map_image = MapImage::new(&polyline)?;
@@ -428,14 +428,13 @@ async fn get_map_image(
     if let Some(title) = &title {
         map_image
             .add_text(
-                title,
+                title.to_uppercase().as_str(),
                 TextOptions {
                     color: DefaultColor::White,
                     font_size: TITLE_ROW_HEIGHT,
                     alignment: TextAlignment::Center,
                 },
             )
-            .add_spacer()
             .add_spacer();
     }
 
@@ -525,7 +524,7 @@ mod tests {
 
         let _db = crate::db_service::get_db_service().await;
 
-        let activity_id = 11982065575;
+        let activity_id = 13847553249;
         send_end_webhook(Some(activity_id)).await;
     }
 }

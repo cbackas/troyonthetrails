@@ -103,7 +103,7 @@ pub struct MapImage {
 impl MapImage {
     pub fn new(polyline: &str) -> anyhow::Result<Self> {
         let font = {
-            let font_data = include_bytes!("../assets/PTSans-Regular.ttf");
+            let font_data = include_bytes!("../assets/PTSans-Bold.ttf");
             FontRef::try_from_slice(font_data)?
         };
 
