@@ -196,13 +196,9 @@ impl MapImage {
         const IIMAGE_HEIGHT: i32 = IMAGE_HEIGHT as i32;
         const HORIZONTAL_PADDING: i32 = IIMAGE_WIDTH / 6;
 
-        let total_elements = self
-            .elements
-            .iter()
-            .filter(|e| matches!(e, TextElement::Text(_, _)))
-            .count();
+        let total_elements = self.elements.len();
         let total_height = total_elements as i32 * LINE_SPACING;
-        let mut current_y = (IIMAGE_HEIGHT / 4) - (total_height / 2);
+        let mut current_y = (IIMAGE_HEIGHT / 2) - (total_height / 2);
 
         let mut rgba_img = self.dynamic_img.to_rgba8();
 
