@@ -3,11 +3,9 @@
     "postinstall": "cp ./node_modules/htmx.org/dist/htmx.min.js ./assets/htmx.min.js",
     "tailwind:generate": "npx @tailwindcss/cli -i ./styles/tailwind.css -o ./assets/main.css"
   },
-  "dependencies": {
-    "htmx.org": "^1.9.12"
-  },
   "devDependencies": {
     "@tailwindcss/cli": "^4.0.13",
+    "htmx.org": "^2.0.4",
     "tailwindcss": "^4.0.13"
   }
 }
