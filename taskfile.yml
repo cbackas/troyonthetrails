@@ -6,7 +6,7 @@ tasks:
   tailwind-generate:
     dir: 'web_service'
     cmds:
-      - npx tailwindcss -i ./styles/tailwind.css -o ./assets/main.css
+      - npm run tailwind:generate
   build:
     cmds:
       - cargo build
