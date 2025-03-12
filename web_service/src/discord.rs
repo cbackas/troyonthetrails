@@ -1,8 +1,7 @@
 use serde::ser::SerializeStruct;
 
-use shared_lib::structs::URLParams;
-
 use crate::{
+    map_image::{DefaultColor, MapImage, TextAlignment, TextOptions},
     strava::{self, api_service::Activity},
     utils,
 };
@@ -373,34 +372,27 @@ pub async fn send_end_webhook(activity_id: Option<i64>) {
                 let max_speed = utils::mps_to_miph(activity.max_speed, false);
 
                 let image: Option<WebhookImage> = {
-                    let map_service_url = std::env::var("MAP_SERVICE_URL");
                     let polyline = match activity.map {
-                        Some(map) => Some(map.summary_polyline),
-                        None => None,
+                        Some(map) => map.summary_polyline,
+                        None => return,
                     };
-                    if let (Ok(map_service_url), Some(polyline)) = (map_service_url, polyline) {
-                        match get_map_image(
-                            map_service_url,
-                            URLParams {
-                                title: name.clone(),
-                                polyline: Some(polyline),
-                                duration: Some(activity.elapsed_time),
-                                distance: Some(activity.distance),
-                                elevation_gain: Some(activity.total_elevation_gain),
-                                average_speed: Some(activity.average_speed),
-                                top_speed: Some(activity.max_speed),
-                            },
-                        )
-                        .await
-                        {
-                            Ok(data) => Some(WebhookImage(data)),
-                            Err(e) => {
-                                tracing::error!("Failed to get map image: {}", e);
-                                None
-                            }
+
+                    match get_map_image(
+                        polyline,
+                        &name,
+                        activity.elapsed_time,
+                        activity.distance,
+                        activity.total_elevation_gain,
+                        activity.average_speed,
+                        activity.max_speed,
+                    )
+                    .await
+                    {
+                        Ok(data) => Some(WebhookImage(data)),
+                        Err(e) => {
+                            tracing::error!("Failed to get map image: {:?}", e);
+                            None
                         }
-                    } else {
-                        None
                     }
                 };
 
@@ -419,27 +411,91 @@ pub async fn send_end_webhook(activity_id: Option<i64>) {
     send_webhook(OffTrailsNotification { webhook_data }).await;
 }
 
-async fn get_map_image(map_service_url: String, url_params: URLParams) -> anyhow::Result<Vec<u8>> {
-    let client = reqwest::Client::builder().build()?;
+async fn get_map_image(
+    polyline: String,
+    title: &Option<String>,
+    duration: i64,
+    distance: f64,
+    elevation_gain: f64,
+    average_speed: f64,
+    top_speed: f64,
+) -> anyhow::Result<Vec<u8>> {
+    const TITLE_ROW_HEIGHT: f32 = 65.0;
+    const DATA_ROW_HEIGHT: f32 = 36.0;
 
-    let response = client
-        .request(reqwest::Method::GET, map_service_url)
-        .query(&url_params)
-        .send()
-        .await?;
+    let mut map_image = MapImage::new(&polyline)?;
 
-    if response.status() == reqwest::StatusCode::NO_CONTENT {
-        return Err(anyhow::anyhow!("Recived status code 204"));
+    if let Some(title) = &title {
+        map_image
+            .add_text(
+                title,
+                TextOptions {
+                    color: DefaultColor::White,
+                    font_size: TITLE_ROW_HEIGHT,
+                    alignment: TextAlignment::Center,
+                },
+            )
+            .add_spacer()
+            .add_spacer();
     }
 
-    let bytes = response.bytes().await?;
-    let bytes: Vec<u8> = bytes.iter().cloned().collect();
+    let duration = shared_lib::utils::minutes_to_human_readable(duration);
+    map_image
+        .add_text(
+            format!("{} ride", duration).as_str(),
+            TextOptions {
+                color: DefaultColor::White,
+                font_size: DATA_ROW_HEIGHT,
+                alignment: TextAlignment::Center,
+            },
+        )
+        .add_spacer();
 
-    if bytes.is_empty() {
-        return Err(anyhow::anyhow!("Empty image data"));
-    }
+    let distance = shared_lib::utils::meters_to_miles(distance, false);
+    map_image.add_text_with_svg(
+        format!("Rode {} miles", distance).as_str(),
+        TextOptions {
+            color: DefaultColor::White,
+            font_size: DATA_ROW_HEIGHT,
+            alignment: TextAlignment::Left,
+        },
+        include_bytes!("../assets/measure-2-svgrepo-com.svg"),
+    );
 
-    Ok(bytes)
+    let elevation_gain = shared_lib::utils::meters_to_feet(elevation_gain, false);
+    map_image.add_text_with_svg(
+        format!("Climbed {} feet", elevation_gain).as_str(),
+        TextOptions {
+            color: DefaultColor::White,
+            font_size: DATA_ROW_HEIGHT,
+            alignment: TextAlignment::Left,
+        },
+        include_bytes!("../assets/climb-svgrepo-com.svg"),
+    );
+
+    map_image.add_text_with_svg(
+        format!("Average speed of {:.1} mph", average_speed).as_str(),
+        TextOptions {
+            color: DefaultColor::White,
+            font_size: DATA_ROW_HEIGHT,
+            alignment: TextAlignment::Left,
+        },
+        include_bytes!("../assets/speedometer-svgrepo-com.svg"),
+    );
+
+    map_image.add_text_with_svg(
+        format!("Top speed of {:.1} mph", top_speed).as_str(),
+        TextOptions {
+            color: DefaultColor::White,
+            font_size: DATA_ROW_HEIGHT,
+            alignment: TextAlignment::Left,
+        },
+        include_bytes!("../assets/lightning-charge-svgrepo-com.svg"),
+    );
+
+    let map_image = map_image.encode_png()?;
+
+    Ok(map_image)
 }
 
 pub async fn send_discard_webhook() {

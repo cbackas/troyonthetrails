@@ -1,6 +1,5 @@
 pub mod home;
 pub mod html_template;
-pub mod map;
 pub mod strava_auth;
 pub mod strava_callback;
 pub mod strava_data;
