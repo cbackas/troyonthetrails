@@ -17,7 +17,7 @@ pub async fn handler(
     };
 
     const TITLE_ROW_HEIGHT: f32 = 65.0;
-    const DATA_ROW_HEIGHT: f32 = 38.0;
+    const DATA_ROW_HEIGHT: f32 = 36.0;
 
     let mut map_image = match MapImage::new(polyline) {
         Ok(map_image) => map_image,

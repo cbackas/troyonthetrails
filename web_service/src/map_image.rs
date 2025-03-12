@@ -103,7 +103,7 @@ pub struct MapImage {
 impl MapImage {
     pub fn new(polyline: &str) -> anyhow::Result<Self> {
         let font = {
-            let font_data = include_bytes!("../assets/AntonSC-Regular.ttf");
+            let font_data = include_bytes!("../assets/PTSans-Regular.ttf");
             FontRef::try_from_slice(font_data)?
         };
 
@@ -191,10 +191,10 @@ impl MapImage {
     }
 
     fn draw_all_text(&mut self) {
-        const LINE_SPACING: i32 = 60;
+        const LINE_SPACING: i32 = 80;
         const IIMAGE_WIDTH: i32 = IMAGE_WIDTH as i32;
         const IIMAGE_HEIGHT: i32 = IMAGE_HEIGHT as i32;
-        const HORIZONTAL_PADDING: i32 = IIMAGE_WIDTH / 6;
+        const HORIZONTAL_PADDING: i32 = IIMAGE_WIDTH / 8;
 
         let total_elements = self.elements.len();
         let total_height = total_elements as i32 * LINE_SPACING;
@@ -205,10 +205,9 @@ impl MapImage {
         for element in &self.elements {
             match element {
                 TextElement::Text(text, options) => {
-                    // let scale = PxScale::from(2.0 * options.font_size);
                     let scale = PxScale {
                         x: options.font_size * 2.0,
-                        y: options.font_size,
+                        y: options.font_size * 2.0,
                     };
 
                     // text dimensions
@@ -237,12 +236,12 @@ impl MapImage {
                     svg_data,
                 } => {
                     let svg_img = self
-                        .render_svg(svg_data, options.font_size)
+                        .render_svg(svg_data, options.font_size * 2.0)
                         .expect("Failed to render SVG");
 
                     let scale = PxScale {
                         x: options.font_size * 2.0,
-                        y: options.font_size,
+                        y: options.font_size * 2.0,
                     };
 
                     // combined width
