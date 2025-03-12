@@ -438,6 +438,7 @@ async fn get_map_image(
             .add_spacer();
     }
 
+    let duration = utils::minutes_to_human_readable(duration);
     map_image
         .add_text(
             format!("{} ride", duration).as_str(),
