@@ -5,7 +5,6 @@ primary_region = "ord"
 
 [processes]
   web_service = "web_service"
-  map_service = "map_service"
 
 [build]
 
@@ -19,9 +18,8 @@ primary_region = "ord"
 
 [env]
   HOST = "troyonthetrails.com"
-  RUST_LOG = "web_service=debug,map_service=debug"
+  RUST_LOG = "web_service=debug,shared_lib=debug"
   PRIMARY_REGION = "ord"
-  MAP_SERVICE_URL="http://map_service.process.troyonthetrails.internal:7070/"
 
 [checks]
   [checks.web_health]
@@ -33,12 +31,3 @@ primary_region = "ord"
     timeout = "10s"
     type = "http"
     processes = ["web_service"]
-  [checks.map_health]
-    grace_period = "60s"
-    interval = "30s"
-    method = "get"
-    path = "/healthcheck"
-    port = 7070
-    timeout = "10s"
-    type = "http"
-    processes = ["map_service"]
