@@ -38,6 +38,7 @@ mod beacon_loop;
 mod db_service;
 mod discord;
 mod encryption;
+mod map_image;
 mod route_handlers;
 mod strava;
 
