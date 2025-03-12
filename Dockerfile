@@ -1,25 +1,12 @@
-FROM node:bookworm-slim as map_assets
-WORKDIR /app
-ADD ./map_service/package*.json /app/
-RUN npm ci
-ADD ./map_service/src/script.js /app/src/script.js
-ADD ./map_service/index.html /app/index.html
-ADD ./map_service/vite.config.js /app/vite.config.js
-RUN npm run build
-
 FROM rust:bookworm as build
 # shared util files
 ADD ./shared_lib/src /app/shared_lib/src
 ADD ./shared_lib/Cargo.toml /app/shared_lib/Cargo.toml
 # web service files
 ADD ./web_service/src /app/web_service/src
+ADD ./web_service/assets /app/web_service/assets
 ADD ./web_service/templates /app/web_service/templates
 ADD ./web_service/Cargo.toml /app/web_service/Cargo.toml
-# map service files
-ADD ./map_service/src /app/map_service/src
-ADD ./map_service/Cargo.toml /app/map_service/Cargo.toml
-COPY ./map_service/assets /app/map_service/assets
-COPY --from=map_assets /app/templates /app/map_service/templates
 # beacon worker files
 # ADD ./beacon_worker/src /app/beacon_worker/src
 # ADD ./beacon_worker/Cargo.toml /app/beacon_worker/Cargo.toml
@@ -44,16 +31,11 @@ FROM debian:bookworm-slim as runtime
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     ca-certificates \
-    chromium-driver \
-    chromium \
     dumb-init \
     && \
     rm -rf /var/lib/apt/lists/*
 
-ENV CHROME_PATH=/usr/bin/chromium
-
 COPY --from=build /app/target/release/web_service /usr/local/bin/web_service
-COPY --from=build /app/target/release/map_service /usr/local/bin/map_service
 COPY --from=web_assets /app/assets /app/assets
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh

@@ -54,6 +54,17 @@ pub fn duration_to_ms_string(duration: std::time::Duration) -> String {
     format!("{:.2}ms", milliseconds)
 }
 
+pub fn minutes_to_human_readable(seconds: i64) -> String {
+    let minutes = seconds / 60;
+    let hours = minutes / 60;
+    let mins = minutes % 60;
+
+    match hours {
+        0 => format!("{} minute", mins),
+        _ => format!("{} hour, {} minute", hours, mins),
+    }
+}
+
 pub fn hash_string(string: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(string);

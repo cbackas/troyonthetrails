@@ -15,15 +15,10 @@ tasks:
     cmds:
       - task: tailwind-generate
       - cargo run
-  run-map:
-    dir: 'map_service'
-    cmds:
-      - npm run build
-      - cargo run
   dev:
     aliases: [watch]
     cmds:
-      - cargo watch -s 'task run-map'
+      - cargo watch -s 'task run-web'
     env:
       RUST_BACKTRACE: 1
   deploy:

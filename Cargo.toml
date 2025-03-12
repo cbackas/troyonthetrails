@@ -1,5 +1,5 @@
 [workspace]
-members = ["web_service", "map_service", "shared_lib"]
+members = ["web_service", "shared_lib"]
 resolver = "2"
 
 [workspace.dependencies]
