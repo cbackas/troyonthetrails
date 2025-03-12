@@ -15,11 +15,6 @@ tasks:
     cmds:
       - task: tailwind-generate
       - cargo run
-  run-map:
-    dir: 'map_service'
-    cmds:
-      - npm run build
-      - cargo run
   dev:
     aliases: [watch]
     cmds:
