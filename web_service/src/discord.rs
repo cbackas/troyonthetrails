@@ -381,10 +381,10 @@ pub async fn send_end_webhook(activity_id: Option<i64>) {
                         polyline,
                         &name,
                         activity.elapsed_time,
-                        activity.distance,
-                        activity.total_elevation_gain,
-                        activity.average_speed,
-                        activity.max_speed,
+                        distance,
+                        total_elevation_gain,
+                        average_speed,
+                        max_speed,
                     )
                     .await
                     {
