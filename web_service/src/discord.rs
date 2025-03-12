@@ -438,7 +438,6 @@ async fn get_map_image(
             .add_spacer();
     }
 
-    let duration = shared_lib::utils::minutes_to_human_readable(duration);
     map_image
         .add_text(
             format!("{} ride", duration).as_str(),
@@ -450,7 +449,6 @@ async fn get_map_image(
         )
         .add_spacer();
 
-    let distance = shared_lib::utils::meters_to_miles(distance, false);
     map_image.add_text_with_svg(
         format!("Rode {} miles", distance).as_str(),
         TextOptions {
@@ -461,7 +459,6 @@ async fn get_map_image(
         include_bytes!("../assets/measure-2-svgrepo-com.svg"),
     );
 
-    let elevation_gain = shared_lib::utils::meters_to_feet(elevation_gain, false);
     map_image.add_text_with_svg(
         format!("Climbed {} feet", elevation_gain).as_str(),
         TextOptions {
