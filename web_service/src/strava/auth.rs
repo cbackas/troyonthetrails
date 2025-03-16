@@ -40,8 +40,8 @@ pub async fn get_token() -> Option<TokenData> {
         .get_or_init(|| async {
             match db_service::get_strava_auth().await {
                 Ok(data) => Some(data),
-                _ => {
-                    tracing::warn!("No strava auth data found in db");
+                Err(e) => {
+                    tracing::warn!("No strava auth data found in db, {:?}", e);
                     None
                 }
             }

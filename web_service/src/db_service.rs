@@ -8,7 +8,11 @@ use anyhow::Context;
 use libsql::{de::from_row, params::IntoParams};
 use serde::de;
 
-use crate::{encryption::encrypt, strava::auth::TokenData, DB_SERVICE};
+use crate::{
+    encryption::{decrypt, encrypt},
+    strava::auth::TokenData,
+    DB_SERVICE,
+};
 
 #[derive(Debug)]
 pub struct TroyStatus {
@@ -236,10 +240,28 @@ pub async fn set_beacon_url(beacon_url: Option<String>) {
 }
 
 pub async fn get_strava_auth() -> anyhow::Result<TokenData> {
+    #[derive(Debug, serde::Deserialize, Clone)]
+    #[allow(dead_code)]
+    struct StravaAuthRow {
+        id: i64,
+        expires_at: u64,
+        access_token: Vec<u8>,
+        refresh_token: Vec<u8>,
+    }
+
     let db_service = DB_SERVICE.get().unwrap();
-    db_service
-        .query_one::<TokenData>("SELECT * FROM strava_auth", libsql::params!())
-        .await
+    let result = db_service
+        .query_one::<StravaAuthRow>("SELECT * FROM strava_auth", libsql::params!())
+        .await;
+
+    match result {
+        Ok(result) => Ok(TokenData {
+            expires_at: result.expires_at,
+            access_token: decrypt(result.access_token)?,
+            refresh_token: decrypt(result.refresh_token)?,
+        }),
+        Err(e) => Err(e),
+    }
 }
 
 pub async fn set_strava_auth(token_data: TokenData) {
