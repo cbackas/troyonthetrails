@@ -344,7 +344,7 @@ pub async fn send_end_webhook(activity_id: Option<i64>) {
         Some(activity_id) => match strava::api_service::get_activity(activity_id).await {
             Ok(activity) => Some(activity),
             Err(e) => {
-                tracing::error!("Failed to get last activity: {}", e);
+                tracing::error!("Failed to get last activity: {:?}", e);
                 None
             }
         },
@@ -381,10 +381,10 @@ pub async fn send_end_webhook(activity_id: Option<i64>) {
                         polyline,
                         &name,
                         activity.elapsed_time,
-                        activity.distance,
-                        activity.total_elevation_gain,
-                        activity.average_speed,
-                        activity.max_speed,
+                        distance,
+                        total_elevation_gain,
+                        average_speed,
+                        max_speed,
                     )
                     .await
                     {
@@ -438,7 +438,7 @@ async fn get_map_image(
             .add_spacer();
     }
 
-    let duration = shared_lib::utils::minutes_to_human_readable(duration);
+    let duration = utils::minutes_to_human_readable(duration);
     map_image
         .add_text(
             format!("{} ride", duration).as_str(),
@@ -450,7 +450,6 @@ async fn get_map_image(
         )
         .add_spacer();
 
-    let distance = shared_lib::utils::meters_to_miles(distance, false);
     map_image.add_text_with_svg(
         format!("Rode {} miles", distance).as_str(),
         TextOptions {
@@ -461,7 +460,6 @@ async fn get_map_image(
         include_bytes!("../assets/measure-2-svgrepo-com.svg"),
     );
 
-    let elevation_gain = shared_lib::utils::meters_to_feet(elevation_gain, false);
     map_image.add_text_with_svg(
         format!("Climbed {} feet", elevation_gain).as_str(),
         TextOptions {
@@ -524,7 +522,7 @@ mod tests {
 
         let _db = crate::db_service::get_db_service().await;
 
-        let activity_id = 13847553249;
+        let activity_id = 13865285076;
         send_end_webhook(Some(activity_id)).await;
     }
 }

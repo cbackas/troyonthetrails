@@ -47,11 +47,17 @@ pub async fn process_beacon() {
         // no activity_id, but Uploaded status (which is a lie)
         (None, Status::Uploaded) => {
             let mut beacon_data = beacon_data;
-            beacon_data.status = Status::Uploaded;
+            beacon_data.status = Status::UploadedLie;
             beacon_data
         }
         // no activity_id, and status is anything else
         _ => beacon_data,
+    };
+
+    let ride_time = {
+        let update_time = update_time.datetime();
+        let now = chrono::Utc::now();
+        (now - update_time).num_minutes()
     };
 
     match status {
@@ -83,16 +89,20 @@ pub async fn process_beacon() {
         }
         Status::NotStarted => {
             tracing::info!("Beacon data indicates activity is not started yet");
-            let diff = {
-                let update_time = update_time.datetime();
-                let now = chrono::Utc::now();
-                now - update_time
-            };
-            if diff.num_minutes() > 45 {
+            if ride_time > 45 {
                 tracing::info!(
                     "Beacon data is old and activity never started, clearing beacon url"
                 );
                 db_service::set_beacon_url(None).await;
+            }
+        }
+        Status::UploadedLie => {
+            if ride_time > (4 * 60) {
+                tracing::info!("Beacon data indicates activity was uploaded, but no activity id was found. It's been a while, clearing beacon url");
+                db_service::set_troy_status(false).await;
+                discord::send_end_webhook(None).await;
+            } else {
+                tracing::info!("Beacon data indicates activity was uploaded, but no activity id found, looping back again");
             }
         }
         _ => {

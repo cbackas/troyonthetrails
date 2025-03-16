@@ -44,6 +44,7 @@ pub enum Status {
     AutoPaused,
     ManualPaused,
     Uploaded,
+    UploadedLie,
     Dicarded,
     NotStarted,
 }
@@ -73,6 +74,7 @@ impl From<Status> for i64 {
             Status::Uploaded => 5,
             Status::Dicarded => 6,
             Status::NotStarted => 7,
+            Status::UploadedLie => 99,
         }
     }
 }
