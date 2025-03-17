@@ -4,7 +4,9 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use libsql::params::IntoParams;
+use anyhow::Context;
+use libsql::{de::from_row, params::IntoParams};
+use serde::de;
 
 use crate::{
     encryption::{decrypt, encrypt},
@@ -36,11 +38,12 @@ impl Display for DBTable {
 pub async fn get_db_service() -> &'static DbService {
     DB_SERVICE
         .get_or_init(|| async {
-            let db = libsql::Database::open_with_remote_sync(
-                env::var("LIBSQL_LOCAL_DB_PATH").unwrap_or("/tmp/local_replica.db".to_string()),
-                env::var("LIBSQL_CLIENT_URL").unwrap(),
-                env::var("LIBSQL_CLIENT_TOKEN").unwrap(),
+            let db = libsql::Builder::new_remote_replica(
+                env::var("LIBSQL_LOCAL_DB_PATH").unwrap_or("file:local_replica.db".to_string()),
+                env::var("LIBSQL_CLIENT_URL").expect("Missing LIBSQL_CLIENT_URL"),
+                env::var("LIBSQL_CLIENT_TOKEN").expect("Missing LIBSQL_CLIENT_TOKEN"),
             )
+            .build()
             .await
             .expect("Failed to create database");
 
@@ -115,38 +118,58 @@ impl DbService {
         let _sync = db.sync().await?;
         Ok(result)
     }
+
+    pub async fn query_many<T>(
+        &self,
+        statement: &str,
+        params: impl IntoParams,
+    ) -> anyhow::Result<Vec<T>>
+    where
+        T: de::DeserializeOwned,
+        T: Debug,
+        T: Clone,
+    {
+        let connection = &self.db.connect().expect("Failed to connect to db");
+        let mut result_set = connection
+            .query(statement, params)
+            .await
+            .context("Failed to get data from database")?;
+
+        let mut rows = Vec::new();
+        while let Some(row) = result_set.next().await? {
+            let row = libsql::de::from_row::<T>(&row)?;
+            rows.push(row);
+        }
+
+        Ok(rows)
+    }
+
+    pub async fn query_one<T>(&self, statement: &str, params: impl IntoParams) -> anyhow::Result<T>
+    where
+        T: de::DeserializeOwned,
+        T: Debug,
+        T: Clone,
+    {
+        let connection = &self.db.connect().expect("Failed to connect to db");
+        let mut result_set = connection
+            .query(statement, params)
+            .await
+            .context("Failed to get data from database")?;
+
+        let row = result_set
+            .next()
+            .await
+            .context("Failed to get data from database")?
+            .context("Failed to get data from database")?;
+
+        let row = from_row::<T>(&row)?;
+
+        Ok(row)
+    }
 }
 
 pub async fn get_troy_status() -> TroyStatus {
-    let db_service = DB_SERVICE.get().unwrap();
-    let result = db_service
-        .db
-        .connect()
-        .expect("Failed to connect to db")
-        .query("SELECT * FROM troy_status", libsql::params!())
-        .await;
-
-    if let Err(result) = result {
-        tracing::error!("Failed to get troy status from db: {}", result.to_string());
-        return TroyStatus {
-            is_on_trail: false,
-            beacon_url: None,
-            trail_status_updated: None,
-        };
-    }
-
-    let result = result.unwrap().next().unwrap_or_default();
-
-    if result.is_none() {
-        tracing::error!("Failed to get troy status from db, didn't find any rows",);
-        return TroyStatus {
-            is_on_trail: false,
-            beacon_url: None,
-            trail_status_updated: None,
-        };
-    }
-
-    #[derive(Debug, serde::Deserialize)]
+    #[derive(Debug, serde::Deserialize, Clone)]
     #[allow(dead_code)]
     struct TroyStatusRow {
         id: i64,
@@ -155,16 +178,24 @@ pub async fn get_troy_status() -> TroyStatus {
         trail_status_updated: u64,
     }
 
-    let result = result.unwrap();
+    let db_service = DB_SERVICE.get().unwrap();
+    let result = db_service
+        .query_one::<TroyStatusRow>("SELECT * FROM troy_status", libsql::params!())
+        .await;
 
-    let thing = libsql::de::from_row::<TroyStatusRow>(&result).unwrap();
-
-    TroyStatus {
-        is_on_trail: thing.is_on_trail == 1,
-        beacon_url: thing.beacon_url,
-        trail_status_updated: Some(
-            SystemTime::UNIX_EPOCH + Duration::from_secs(thing.trail_status_updated),
-        ),
+    match result {
+        Ok(result) => TroyStatus {
+            is_on_trail: result.is_on_trail == 1,
+            beacon_url: result.beacon_url.clone(),
+            trail_status_updated: Some(
+                SystemTime::UNIX_EPOCH + Duration::from_secs(result.trail_status_updated),
+            ),
+        },
+        Err(_) => TroyStatus {
+            is_on_trail: false,
+            beacon_url: None,
+            trail_status_updated: None,
+        },
     }
 }
 
@@ -208,76 +239,47 @@ pub async fn set_beacon_url(beacon_url: Option<String>) {
         .await;
 }
 
-pub async fn get_strava_auth() -> Option<TokenData> {
-    let result = DB_SERVICE
-        .get()
-        .unwrap()
-        .db
-        .connect()
-        .expect("Failed to connect to db")
-        .query("SELECT * FROM strava_auth", libsql::params!())
+pub async fn get_strava_auth() -> anyhow::Result<TokenData> {
+    #[derive(Debug, serde::Deserialize, Clone)]
+    #[allow(dead_code)]
+    struct StravaAuthRow {
+        id: i64,
+        expires_at: u64,
+        access_token: Vec<u8>,
+        refresh_token: Vec<u8>,
+    }
+
+    let db_service = DB_SERVICE.get().unwrap();
+    let result = db_service
+        .query_one::<StravaAuthRow>("SELECT * FROM strava_auth", libsql::params!())
         .await;
 
-    if result.is_err() {
-        // let thing = result.unwrap_err().to_string();
-        tracing::error!("Failed to get strava auth from db");
-        return None;
+    match result {
+        Ok(result) => Ok(TokenData {
+            expires_at: result.expires_at,
+            access_token: decrypt(result.access_token)?,
+            refresh_token: decrypt(result.refresh_token)?,
+        }),
+        Err(e) => Err(e),
     }
-
-    let result = result.unwrap().next().unwrap_or_default();
-
-    if result.is_none() {
-        tracing::error!("Failed to get strava auth from db, expected 1 row but found none");
-
-        return None;
-    }
-
-    let result = result.unwrap();
-
-    let access_token = result.get(1).unwrap_or("".into());
-    let access_token = match decrypt(access_token) {
-        Ok(token) => token,
-        Err(e) => {
-            tracing::error!("Failed to decrypt access token: {}", e);
-            return None;
-        }
-    };
-
-    let refresh_token = result.get(2).unwrap_or("".into());
-    let refresh_token = match decrypt(refresh_token) {
-        Ok(token) => token,
-        Err(e) => {
-            tracing::error!("Failed to decrypt refresh token: {}", e);
-            return None;
-        }
-    };
-
-    let expires_at = result.get(3);
-    if expires_at.is_err() {
-        tracing::error!("Failed to get expires_at from db: {:?}", expires_at);
-        return None;
-    }
-    let expires_at = expires_at.unwrap();
-
-    Some(TokenData {
-        access_token,
-        refresh_token,
-        expires_at,
-    })
 }
 
 pub async fn set_strava_auth(token_data: TokenData) {
-    let access_token = encrypt(token_data.access_token);
-    if let Err(error) = access_token {
-        tracing::error!("Failed to encrypt access token {:?}", error);
-        return;
-    }
+    let access_token = match encrypt(token_data.access_token) {
+        Ok(token) => token,
+        Err(error) => {
+            tracing::error!("Failed to encrypt access token {:?}", error);
+            return;
+        }
+    };
 
-    let refresh_token = encrypt(token_data.refresh_token);
-    if let Err(error) = refresh_token {
-        tracing::error!("Failed to encrypt refresh token {:?}", error);
-        return;
-    }
+    let refresh_token = match encrypt(token_data.refresh_token) {
+        Ok(token) => token,
+        Err(error) => {
+            tracing::error!("Failed to encrypt refresh token {:?}", error);
+            return;
+        }
+    };
 
     tracing::debug!("Updating strava auth in the DB");
 
@@ -286,6 +288,6 @@ pub async fn set_strava_auth(token_data: TokenData) {
             VALUES (1, ?, ?, ?) \
             ON CONFLICT (id) \
             DO UPDATE SET access_token = excluded.access_token, refresh_token = excluded.refresh_token, expires_at = excluded.expires_at",
-            libsql::params!(access_token.unwrap(), refresh_token.unwrap(), token_data.expires_at),
+            libsql::params!(access_token, refresh_token, token_data.expires_at),
         DBTable::StravaAuth).await;
 }

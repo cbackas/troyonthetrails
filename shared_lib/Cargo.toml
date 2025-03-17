@@ -7,5 +7,5 @@ edition = "2021"
 anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tracing = "0.1.40"
-sha2 = "0.10.7"
+tracing = { workspace = true }
+sha2 = "0.10.8"
