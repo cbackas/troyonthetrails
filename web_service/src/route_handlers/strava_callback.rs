@@ -6,7 +6,7 @@ use tracing::{debug, error};
 use crate::strava;
 
 #[allow(dead_code)]
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 #[serde(untagged)]
 pub enum StravaCallbackParams {
     Success {
