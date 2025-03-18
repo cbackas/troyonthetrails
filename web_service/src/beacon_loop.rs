@@ -24,6 +24,11 @@ pub async fn process_beacon() {
 
     let beacon_data = match strava::beacon::get_beacon_data(beacon_url.to_string()).await {
         Ok(data) => data,
+        Err(e) if e.to_string().contains("404 Not Found") => {
+            tracing::warn!("Beacon data not found (404 Not Found), clearing beacon url");
+            db_service::set_beacon_url(None).await;
+            return;
+        }
         Err(e) => {
             tracing::error!("Failed to get beacon data: {}", e);
             return;
