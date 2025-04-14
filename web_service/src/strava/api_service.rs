@@ -42,6 +42,7 @@ pub struct StravaData {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Activity {
+    pub id: i64,
     pub resource_state: i64,
     pub athlete: Athlete,
     pub name: String,
@@ -51,44 +52,14 @@ pub struct Activity {
     pub total_elevation_gain: f64,
     #[serde(rename = "type")]
     pub type_field: String,
-    pub sport_type: String,
-    pub workout_type: Option<i64>,
-    pub id: i64,
-    pub start_date: String,
-    pub start_date_local: String,
-    pub timezone: String,
-    pub utc_offset: f64,
-    pub start_latlng: Vec<f64>,
-    pub end_latlng: Vec<f64>,
-    pub location_city: Option<String>,
-    pub location_state: Option<String>,
-    pub location_country: String,
     pub achievement_count: i64,
-    pub kudos_count: i64,
-    pub comment_count: i64,
-    pub athlete_count: i64,
-    pub photo_count: i64,
     pub map: Option<Map>,
-    pub trainer: bool,
-    pub commute: bool,
-    pub manual: bool,
-    pub private: bool,
-    pub flagged: bool,
-    pub gear_id: Option<String>,
-    pub from_accepted_tag: bool,
     pub average_speed: f64,
     pub max_speed: f64,
-    pub has_heartrate: bool,
-    pub heartrate_opt_out: bool,
-    pub display_hide_heartrate_option: bool,
     pub elev_high: f64,
     pub elev_low: f64,
-    pub upload_id: i64,
-    pub upload_id_str: String,
-    pub external_id: String,
-    pub pr_count: i64,
-    pub total_photo_count: i64,
-    pub has_kudoed: bool,
+    #[serde(flatten)]
+    other: serde_json::Value, // This will capture all other fields within 'athlete' as a JSON value.
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
