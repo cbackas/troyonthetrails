@@ -59,14 +59,14 @@ pub struct Activity {
     pub elev_high: f64,
     pub elev_low: f64,
     #[serde(flatten)]
-    other: serde_json::Value, // This will capture all other fields within 'athlete' as a JSON value.
+    other: serde_json::Value, // catch-all
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Athlete {
     pub id: u64,
     #[serde(flatten)]
-    other: serde_json::Value, // This will capture all other fields within 'athlete' as a JSON value.
+    other: serde_json::Value, // catch-all
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
