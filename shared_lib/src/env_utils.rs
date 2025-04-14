@@ -44,10 +44,7 @@ pub fn get_webhook_secret() -> String {
 }
 
 pub fn get_strava_user_id() -> Option<String> {
-    match env::var("STRAVA_USER_ID") {
-        Ok(user_id) => Some(user_id),
-        _ => None,
-    }
+    env::var("STRAVA_USER_ID").ok()
 }
 
 pub fn get_db_encryption_key() -> String {
@@ -58,8 +55,5 @@ pub fn get_db_encryption_key() -> String {
 }
 
 pub fn get_thunderforest_api_key() -> Option<String> {
-    match env::var("THUNDERFOREST_API_KEY") {
-        Ok(key) => Some(key),
-        _ => None,
-    }
+    env::var("THUNDERFOREST_API_KEY").ok()
 }
