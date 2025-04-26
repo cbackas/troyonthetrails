@@ -164,8 +164,6 @@ fn extract_trail_data(html: String) -> anyhow::Result<Vec<TrailSystem>> {
 
     let json = &html[start..end];
 
-    tracing::info!("Extracted JSON: {}", json);
-
     let trail_systems = serde_json::from_str(json);
     match trail_systems {
         Ok(trail_systems) => Ok(trail_systems),
