@@ -2,9 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use axum::extract::State;
-use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer};
-use std::fmt;
 use tokio::sync::Mutex;
 use tracing::log::error;
 
@@ -26,34 +24,41 @@ impl<'de> Deserialize<'de> for TrailStatus {
     where
         D: Deserializer<'de>,
     {
-        struct TrailStatusVisitor;
+        // Use serde_json::Value to capture any type
+        let value = serde_json::Value::deserialize(deserializer)?;
 
-        impl Visitor<'_> for TrailStatusVisitor {
-            type Value = TrailStatus;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a valid trail status")
-            }
-
-            fn visit_str<E>(self, value: &str) -> Result<TrailStatus, E>
-            where
-                E: de::Error,
-            {
-                match value.to_lowercase().as_str() {
-                    "open" => Ok(TrailStatus::Open),
-                    "caution" => Ok(TrailStatus::Caution),
-                    "closed" => Ok(TrailStatus::Closed),
-                    "freeze" => Ok(TrailStatus::Freeze),
-                    _ => {
-                        tracing::warn!("Unknown trail status: {}", value);
-                        Ok(TrailStatus::Unknown)
-                    }
+        match value {
+            serde_json::Value::String(s) => match s.to_lowercase().as_str() {
+                "open" => Ok(TrailStatus::Open),
+                "caution" => Ok(TrailStatus::Caution),
+                "closed" => Ok(TrailStatus::Closed),
+                "freeze" => Ok(TrailStatus::Freeze),
+                other => {
+                    tracing::warn!("Unknown trail status: {}", other);
+                    Ok(TrailStatus::Unknown)
                 }
+            },
+            serde_json::Value::Null => {
+                tracing::warn!("Null trail status");
+                Ok(TrailStatus::Unknown)
+            }
+            _ => {
+                tracing::warn!("Invalid trail status type: {:?}", value);
+                Ok(TrailStatus::Unknown)
             }
         }
-
-        deserializer.deserialize_str(TrailStatusVisitor)
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PredictedStatus {
+    pub status: TrailStatus,
+    pub confidence: String,
+    #[serde(rename = "updated_at")]
+    pub updated_at: String,
+    #[serde(rename = "status_description")]
+    pub status_description: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -74,6 +79,7 @@ pub struct TrailSystem {
     external_url: Option<String>,
     status_description: String,
     directions_url: Option<String>,
+    predicted_status: Option<PredictedStatus>,
 }
 
 pub async fn handler(
@@ -157,6 +163,8 @@ fn extract_trail_data(html: String) -> anyhow::Result<Vec<TrailSystem>> {
         + start;
 
     let json = &html[start..end];
+
+    tracing::info!("Extracted JSON: {}", json);
 
     let trail_systems = serde_json::from_str(json);
     match trail_systems {
