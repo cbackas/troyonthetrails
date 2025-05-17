@@ -1,9 +1,9 @@
-FROM rust:bookworm as build
+FROM rust:bookworm AS build
 ADD . /app/
 WORKDIR /app
 RUN cargo build --release
 
-FROM node:bookworm-slim as web_assets
+FROM node:bookworm-slim AS web_assets
 WORKDIR /app
 ADD ./web_service/package.json /app/package.json
 ADD ./web_service/package-lock.json /app/package-lock.json
@@ -13,7 +13,7 @@ ADD ./web_service/templates /app/templates
 RUN npm ci
 RUN npm run tailwind:generate
 
-FROM debian:bookworm-slim as runtime
+FROM debian:bookworm-slim AS runtime
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     ca-certificates \
