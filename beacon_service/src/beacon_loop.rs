@@ -65,7 +65,7 @@ async fn process_beacon() {
         ..
     } = match (beacon_data.activity_id, &beacon_data.status) {
         // has activity_id, status is already uploaded or discarded
-        (Some(_), Status::Uploaded | Status::Dicarded) => beacon_data,
+        (Some(_), Status::Uploaded | Status::Discarded) => beacon_data,
         // has activity_id, but status is neither uploaded nor discarded
         (Some(_), _) => {
             let mut beacon_data = beacon_data;
@@ -105,7 +105,7 @@ async fn process_beacon() {
                 discord::send_end_webhook(activity_id).await;
             }
         }
-        Status::Dicarded => {
+        Status::Discarded => {
             tracing::info!(
                 "Beacon data indicates activity was discarded, clearing troy status and beacon url"
             );
