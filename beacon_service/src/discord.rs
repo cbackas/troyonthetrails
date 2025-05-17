@@ -1,10 +1,7 @@
 use serde::ser::SerializeStruct;
 
-use crate::{
-    map_image::{DefaultColor, MapImage, TextAlignment, TextOptions},
-    strava::{self, api_service::Activity},
-    utils,
-};
+use map_service::{DefaultColor, MapImage, TextAlignment, TextOptions};
+use shared_lib::structs::Activity;
 
 struct OnTrailsNotification {
     beacon_url: String,
@@ -141,7 +138,7 @@ impl DiscordMessage {
 
 impl Default for DiscordMessage {
     fn default() -> Self {
-        let host_uri = crate::env_utils::get_host_uri();
+        let host_uri = shared_lib::env_utils::get_host_uri();
         let avatar_url = &format!("{}/assets/android-chrome-192x192.png", host_uri);
 
         let mut message = Self::new();
@@ -230,7 +227,7 @@ impl DiscordEmbed {
 
 impl Default for DiscordEmbed {
     fn default() -> Self {
-        let host_uri = crate::env_utils::get_host_uri();
+        let host_uri = shared_lib::env_utils::get_host_uri();
         let avatar_url = &format!("{}/assets/android-chrome-192x192.png", host_uri);
 
         let mut embed = Self::new();
@@ -341,7 +338,7 @@ pub async fn send_starting_webhook(beacon_url: String) {
 
 pub async fn send_end_webhook(activity_id: Option<i64>) {
     let activity: Option<Activity> = match activity_id {
-        Some(activity_id) => match strava::api_service::get_activity(activity_id).await {
+        Some(activity_id) => match strava_service::get_activity(activity_id).await {
             Ok(activity) => Some(activity),
             Err(e) => {
                 tracing::error!("Failed to get last activity: {:?}", e);
@@ -365,11 +362,11 @@ pub async fn send_end_webhook(activity_id: Option<i64>) {
                     "Lunch Mountain Bike Ride" => None,
                     _ => Some(activity.name),
                 };
-                let distance = utils::meters_to_miles(activity.distance, false);
+                let distance = shared_lib::utils::meters_to_miles(activity.distance, false);
                 let total_elevation_gain =
-                    utils::meters_to_feet(activity.total_elevation_gain, true);
-                let average_speed = utils::mps_to_miph(activity.average_speed, false);
-                let max_speed = utils::mps_to_miph(activity.max_speed, false);
+                    shared_lib::utils::meters_to_feet(activity.total_elevation_gain, true);
+                let average_speed = shared_lib::utils::mps_to_miph(activity.average_speed, false);
+                let max_speed = shared_lib::utils::mps_to_miph(activity.max_speed, false);
 
                 let image: Option<WebhookImage> = {
                     let polyline = match activity.map {
@@ -438,7 +435,7 @@ async fn get_map_image(
             .add_spacer();
     }
 
-    let duration = utils::minutes_to_human_readable(duration);
+    let duration = shared_lib::utils::minutes_to_human_readable(duration);
     map_image
         .add_text(
             format!("{} ride", duration).as_str(),
@@ -520,7 +517,7 @@ mod tests {
             .with(tracing_subscriber::fmt::layer())
             .init();
 
-        let _db = crate::db_service::get_db_service().await;
+        let _db = db_service::get_db_service().await;
 
         let activity_id = 13865285076;
         send_end_webhook(Some(activity_id)).await;

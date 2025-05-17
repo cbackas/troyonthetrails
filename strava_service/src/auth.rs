@@ -1,38 +1,8 @@
 use anyhow::Context;
-use serde::{Deserialize, Serialize};
 use tokio::sync::OnceCell;
 
-use crate::db_service;
-
-use super::api_service::Athlete;
-
-#[allow(dead_code)]
-#[derive(Deserialize, Debug, Clone)]
-pub struct StravaTokenResponse {
-    pub token_type: String,
-    pub expires_at: u64,
-    pub expires_in: u64,
-    pub refresh_token: String,
-    pub access_token: String,
-    pub athlete: Option<Athlete>,
-}
-
-impl From<StravaTokenResponse> for TokenData {
-    fn from(val: StravaTokenResponse) -> Self {
-        TokenData {
-            expires_at: val.expires_at,
-            access_token: val.access_token,
-            refresh_token: val.refresh_token,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct TokenData {
-    pub expires_at: u64,
-    pub access_token: String,
-    pub refresh_token: String,
-}
+use db_service;
+use shared_lib::structs::{StravaTokenResponse, TokenData};
 
 static TOKEN_DATA: OnceCell<Option<TokenData>> = OnceCell::const_new();
 pub async fn get_token() -> Option<TokenData> {

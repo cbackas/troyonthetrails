@@ -1,12 +1,35 @@
-use crate::{
-    db_service, discord,
-    strava::{
-        self,
-        beacon::{BeaconData, Status},
-    },
-};
+use crate::discord;
+use strava_service::beacon::{BeaconData, Status};
 
-pub async fn process_beacon() {
+// loop that continuously checks the db for a beacon url and processes the data if found
+pub fn start() {
+    match (std::env::var("FLY_REGION"), std::env::var("PRIMARY_REGION")) {
+        (Ok(fly_region), Ok(primary_region)) => {
+            if fly_region == primary_region {
+                tracing::info!("Beacon loop running in region: {}", fly_region);
+            } else {
+                tracing::trace!(
+                    "Fly region ({}) and primary region ({}) do not match, skipping beacon loop",
+                    fly_region,
+                    primary_region
+                );
+                return;
+            }
+        }
+        _ => {
+            tracing::warn!("FLY_REGION and PRIMARY_REGION are not both set, running beacon loop");
+        }
+    }
+
+    tokio::spawn(async move {
+        loop {
+            process_beacon().await;
+            tokio::time::sleep(tokio::time::Duration::from_secs(45)).await;
+        }
+    });
+}
+
+async fn process_beacon() {
     let troy_status = db_service::get_troy_status().await;
 
     let beacon_url = match troy_status.beacon_url {
@@ -22,7 +45,7 @@ pub async fn process_beacon() {
         }
     };
 
-    let beacon_data = match strava::beacon::get_beacon_data(beacon_url.to_string()).await {
+    let beacon_data = match strava_service::beacon::get_beacon_data(beacon_url.to_string()).await {
         Ok(data) => data,
         Err(e) if e.to_string().contains("404 Not Found") => {
             tracing::warn!("Beacon data not found (404 Not Found), clearing beacon url");

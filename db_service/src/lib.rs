@@ -1,3 +1,5 @@
+mod encryption;
+
 use std::{
     env,
     fmt::{Debug, Display, Formatter},
@@ -7,12 +9,12 @@ use std::{
 use anyhow::Context;
 use libsql::{de::from_row, params::IntoParams};
 use serde::de;
+use tokio::sync::OnceCell;
 
-use crate::{
-    encryption::{decrypt, encrypt},
-    strava::auth::TokenData,
-    DB_SERVICE,
-};
+use crate::encryption::{decrypt, encrypt};
+use shared_lib::structs::TokenData;
+
+static DB_SERVICE: OnceCell<DbService> = OnceCell::const_new();
 
 #[derive(Debug)]
 pub struct TroyStatus {

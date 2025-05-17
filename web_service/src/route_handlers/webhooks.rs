@@ -1,8 +1,6 @@
 use axum::Json;
 use serde::Deserialize;
 
-use crate::db_service;
-
 #[derive(Deserialize, Debug)]
 pub struct WebhookRequest {
     beacon_url: String,
