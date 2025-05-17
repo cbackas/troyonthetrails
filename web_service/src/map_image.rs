@@ -108,7 +108,7 @@ impl MapImage {
         };
 
         let dynamic_img = {
-            let line_string = Self::decode_polyline(polyline)?;
+            let line_string = polyline::decode_polyline(polyline, 5)?;
             Self::get_background_image(line_string)?
         };
 
@@ -117,12 +117,6 @@ impl MapImage {
             font,
             elements: Vec::new(),
         })
-    }
-
-    fn decode_polyline(polyline: &str) -> anyhow::Result<LineString> {
-        let polyline = &polyline.replace("\\\\", "\\");
-        let polyline = polyline::decode_polyline(polyline, 5)?;
-        Ok(polyline)
     }
 
     fn get_background_image(line_string: LineString) -> anyhow::Result<DynamicImage> {
