@@ -1,18 +1,5 @@
 FROM rust:bookworm as build
-# shared util files
-ADD ./shared_lib/src /app/shared_lib/src
-ADD ./shared_lib/Cargo.toml /app/shared_lib/Cargo.toml
-# web service files
-ADD ./web_service/src /app/web_service/src
-ADD ./web_service/assets /app/web_service/assets
-ADD ./web_service/templates /app/web_service/templates
-ADD ./web_service/Cargo.toml /app/web_service/Cargo.toml
-# beacon worker files
-# ADD ./beacon_worker/src /app/beacon_worker/src
-# ADD ./beacon_worker/Cargo.toml /app/beacon_worker/Cargo.toml
-# common files
-ADD ./Cargo.lock /app/Cargo.lock
-ADD ./Cargo.toml /app/Cargo.toml
+ADD . /app/
 WORKDIR /app
 RUN cargo build --release
 
