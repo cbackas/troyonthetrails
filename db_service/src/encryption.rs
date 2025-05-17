@@ -4,7 +4,7 @@ use std::{error::Error, fmt};
 
 use cocoon::Cocoon;
 
-use crate::env_utils::get_db_encryption_key;
+use shared_lib::env_utils::get_db_encryption_key;
 
 #[derive(Debug)]
 pub enum EncryptError {

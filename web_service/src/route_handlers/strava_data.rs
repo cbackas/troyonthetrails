@@ -1,13 +1,10 @@
 use axum::response::IntoResponse;
 use tracing::error;
 
-use crate::{
-    strava,
-    utils::{format_thousands, meters_to_feet, meters_to_miles},
-};
+use crate::utils::{format_thousands, meters_to_feet, meters_to_miles};
 
 pub async fn handler() -> impl IntoResponse {
-    let strava_data = match strava::api_service::get_athlete_stats().await {
+    let strava_data = match strava_service::get_athlete_stats().await {
         Ok(data) => data,
         Err(err) => {
             error!("Failed to get strava data: {}", err);

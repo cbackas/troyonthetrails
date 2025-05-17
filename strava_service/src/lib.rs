@@ -1,6 +1,7 @@
-use std::time::Duration;
+pub mod auth;
+pub mod beacon;
 
-use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 use anyhow::Context;
 use reqwest::{header, Response};
@@ -9,78 +10,9 @@ use tokio::{
     time::{sleep, Instant},
 };
 
-use crate::env_utils;
+use shared_lib::env_utils;
+use shared_lib::structs::{Activity, StravaData, StravaDataCache};
 
-use super::auth;
-
-#[allow(dead_code)]
-#[derive(Deserialize, Debug, Clone)]
-pub struct StravaTotals {
-    pub count: u32,
-    pub distance: f64,
-    pub moving_time: f64,
-    pub elapsed_time: f64,
-    pub elevation_gain: f64,
-    pub achievement_count: Option<u32>,
-}
-
-#[allow(dead_code)]
-#[derive(Deserialize, Debug, Clone)]
-pub struct StravaData {
-    pub biggest_ride_distance: f64,
-    pub biggest_climb_elevation_gain: Option<f64>,
-    pub recent_ride_totals: StravaTotals,
-    pub all_ride_totals: StravaTotals,
-    pub recent_run_totals: StravaTotals,
-    pub all_run_totals: StravaTotals,
-    pub recent_swim_totals: StravaTotals,
-    pub all_swim_totals: StravaTotals,
-    pub ytd_ride_totals: StravaTotals,
-    pub ytd_run_totals: StravaTotals,
-    pub ytd_swim_totals: StravaTotals,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Activity {
-    pub id: i64,
-    pub resource_state: i64,
-    pub athlete: Athlete,
-    pub name: String,
-    pub distance: f64,
-    pub moving_time: i64,
-    pub elapsed_time: i64,
-    pub total_elevation_gain: f64,
-    #[serde(rename = "type")]
-    pub type_field: String,
-    pub achievement_count: i64,
-    pub map: Option<Map>,
-    pub average_speed: f64,
-    pub max_speed: f64,
-    pub elev_high: f64,
-    pub elev_low: f64,
-    #[serde(flatten)]
-    other: serde_json::Value, // catch-all
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Athlete {
-    pub id: u64,
-    #[serde(flatten)]
-    other: serde_json::Value, // catch-all
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Map {
-    pub id: String,
-    pub polyline: Option<String>,
-    pub summary_polyline: String,
-    pub resource_state: i64,
-}
-
-pub struct StravaDataCache {
-    pub strava_athlete_stats: StravaData,
-    pub strava_athlete_stats_updated: Instant,
-}
 static CACHED_DATA: OnceCell<StravaDataCache> = OnceCell::const_new();
 
 const MAX_RETRIES: u32 = 5;

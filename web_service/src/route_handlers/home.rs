@@ -1,15 +1,10 @@
-use crate::{
-    db_service::{get_troy_status, set_troy_status},
-    strava,
-};
-
 pub async fn handler() -> impl axum::response::IntoResponse {
-    let last_updated = match get_troy_status().await.trail_status_updated {
+    let last_updated = match db_service::get_troy_status().await.trail_status_updated {
         None => "never".to_string(),
         Some(last_updated) => {
             let elapsed = last_updated.elapsed().unwrap();
             if elapsed.as_secs() > 14400 {
-                set_troy_status(false).await;
+                db_service::set_troy_status(false).await;
             }
 
             let elapsed = humantime::format_duration(elapsed).to_string();
@@ -24,7 +19,7 @@ pub async fn handler() -> impl axum::response::IntoResponse {
         }
     };
 
-    let has_strava_token = strava::auth::get_token().await.is_some();
+    let has_strava_token = strava_service::auth::get_token().await.is_some();
 
     let template = HomeTemplate {
         last_updated,

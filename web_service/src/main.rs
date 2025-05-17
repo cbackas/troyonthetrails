@@ -10,10 +10,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use tokio::{
-    sync::{Mutex, OnceCell},
-    time::Instant,
-};
+use tokio::{sync::Mutex, time::Instant};
 use tower_http::compression::{
     predicate::{DefaultPredicate, NotForContentType, Predicate},
     CompressionLayer,
@@ -22,27 +19,17 @@ use tower_http::{
     services::{ServeDir, ServeFile},
     trace::TraceLayer,
 };
-use tracing::{debug, info, trace, Span};
 use tracing_subscriber::{
     filter::LevelFilter, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
 };
 
-use crate::db_service::DbService;
-
+extern crate beacon_service;
 extern crate shared_lib;
 
 use shared_lib::env_utils;
 use shared_lib::utils;
 
-mod beacon_loop;
-mod db_service;
-mod discord;
-mod encryption;
-mod map_image;
 mod route_handlers;
-mod strava;
-
-pub static DB_SERVICE: OnceCell<DbService> = OnceCell::const_new();
 
 #[derive(Default)]
 pub struct AppState {
@@ -51,6 +38,8 @@ pub struct AppState {
     trail_data: Vec<route_handlers::trail_check::TrailSystem>,
 }
 type SharedAppState = Arc<Mutex<AppState>>;
+
+struct RequestUri(Uri);
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -64,14 +53,14 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    debug!("initializing app state ...");
+    tracing::debug!("initializing app state ...");
 
     {
         let db = db_service::get_db_service().await;
         db.init_tables().await;
     }
 
-    run_beacon_loop();
+    beacon_service::beacon_loop::start();
 
     let port = crate::env_utils::get_port();
     let addr = format!("[::]:{}", port)
@@ -79,7 +68,7 @@ async fn main() -> anyhow::Result<()> {
         .expect("unable to parse address");
     let host_uri = crate::env_utils::get_host_uri();
 
-    info!("Starting server at host: {}", host_uri);
+    tracing::info!("Starting server at host: {}", host_uri);
 
     let predicate = DefaultPredicate::new().and(NotForContentType::new("application/json"));
     let compression_layer = CompressionLayer::new().gzip(true).compress_when(predicate);
@@ -100,7 +89,7 @@ async fn main() -> anyhow::Result<()> {
                     },
                 ))
                 .layer(TraceLayer::new_for_http().on_response(
-                    |response: &Response, latency: std::time::Duration, _span: &Span| {
+                    |response: &Response, latency: std::time::Duration, _span: &tracing::Span| {
                         let url = match response.extensions().get::<RequestUri>().map(|r| &r.0) {
                             Some(uri) => uri.to_string(),
                             None => "unknown".to_string(),
@@ -109,11 +98,11 @@ async fn main() -> anyhow::Result<()> {
                         let latency = utils::duration_to_ms_string(latency);
 
                         if url == "/healthcheck" {
-                            trace!("{} {} {}", url, status, latency);
+                            tracing::trace!("{} {} {}", url, status, latency);
                             return;
                         }
 
-                        debug!("{} {} {}", url, status, latency);
+                        tracing::debug!("{} {} {}", url, status, latency);
                     },
                 ))
                 .layer(compression_layer)
@@ -130,11 +119,11 @@ async fn main() -> anyhow::Result<()> {
  * also brings together the other routers
  **/
 fn get_main_router() -> Router<SharedAppState> {
-    debug!("initializing router(s) ...");
+    tracing::debug!("initializing router(s) ...");
 
     let wh_secret = crate::env_utils::get_webhook_secret();
     let wh_path = format!("/wh/trail-event/{:#}", wh_secret);
-    info!("Webhook event route: {}", wh_path);
+    tracing::info!("Webhook event route: {}", wh_path);
 
     let services_router = get_services_router();
     let api_router = get_api_router();
@@ -185,34 +174,4 @@ fn get_api_router() -> Router<SharedAppState> {
                 .route("/callback", get(route_handlers::strava_callback::handler))
                 .route("/data", get(route_handlers::strava_data::handler)),
         )
-}
-
-struct RequestUri(Uri);
-
-// loop that continuously checks the db for a beacon url and processes the data if found
-fn run_beacon_loop() {
-    match (std::env::var("FLY_REGION"), std::env::var("PRIMARY_REGION")) {
-        (Ok(fly_region), Ok(primary_region)) => {
-            if fly_region == primary_region {
-                tracing::info!("Beacon loop running in region: {}", fly_region);
-            } else {
-                tracing::trace!(
-                    "Fly region ({}) and primary region ({}) do not match, skipping beacon loop",
-                    fly_region,
-                    primary_region
-                );
-                return;
-            }
-        }
-        _ => {
-            tracing::warn!("FLY_REGION and PRIMARY_REGION are not both set, running beacon loop");
-        }
-    }
-
-    tokio::spawn(async move {
-        loop {
-            beacon_loop::process_beacon().await;
-            tokio::time::sleep(tokio::time::Duration::from_secs(45)).await;
-        }
-    });
 }
