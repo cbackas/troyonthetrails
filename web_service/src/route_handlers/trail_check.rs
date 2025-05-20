@@ -138,10 +138,10 @@ struct TrailCheckTemplate {
 
 impl TrailCheckTemplate {
     pub fn format_time_ago(&self, datetime_str: &Option<String>) -> String {
-        datetime_str
-            .as_ref()
-            .map(|dt| crate::utils::utc_to_time_ago_human_readable(dt))
-            .unwrap_or_default()
+        match datetime_str {
+            Some(dt) => crate::utils::utc_to_time_ago_human_readable(dt),
+            None => Default::default(),
+        }
     }
 }
 
