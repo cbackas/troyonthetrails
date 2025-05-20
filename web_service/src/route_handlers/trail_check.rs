@@ -79,6 +79,7 @@ pub struct TrailSystem {
     external_url: Option<String>,
     status_description: String,
     directions_url: Option<String>,
+    latest_status_update_at: Option<String>,
     predicted_status: Option<PredictedStatus>,
 }
 
@@ -133,6 +134,14 @@ pub async fn handler(
 #[template(path = "components/trail_check.html")]
 struct TrailCheckTemplate {
     pub trails: Vec<TrailSystem>,
+}
+
+impl TrailCheckTemplate {
+    pub fn format_time_ago(&self, datetime_str: &Option<String>) -> Option<String> {
+        datetime_str
+            .as_ref()
+            .map(|dt| crate::utils::utc_to_time_ago_human_readable(dt))
+    }
 }
 
 async fn get_trail_html() -> anyhow::Result<String> {

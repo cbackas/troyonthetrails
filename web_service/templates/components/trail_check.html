@@ -4,7 +4,7 @@
     </div>
 {% else %}
     {% for trail in trails %}
-        <div class="p-4 bg-white rounded shadow-xl max-w-sm w-full h-full">
+        <div class="p-4 bg-white rounded shadow-xl max-w-sm w-full h-full relative">
             <div class="flex items-center">
                 {% match trail.status %}
                 {% when TrailStatus::Closed %}
@@ -67,6 +67,9 @@
             {% else %}
                 <p class="ml-2 text-sm text-gray-500">{{ trail.status_description }}</p>
             {% endmatch %}
+            <span class="absolute bottom-2 right-2 text-xs text-gray-400">
+                {{ self.time_ago(trail.latest_status_update_at) }}
+            </span>
         </div>
     </div>
 </div>

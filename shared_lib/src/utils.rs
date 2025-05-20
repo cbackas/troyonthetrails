@@ -1,6 +1,7 @@
 use serde_json::{self};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use chrono::{DateTime, Utc};
 
 pub fn meters_to_feet(meters: f64, round_to_whole: bool) -> f64 {
     let feet = meters * 3.28084;
@@ -62,6 +63,31 @@ pub fn minutes_to_human_readable(seconds: i64) -> String {
     match hours {
         0 => format!("{} minute", mins),
         _ => format!("{} hour, {} minute", hours, mins),
+    }
+}
+
+pub fn utc_to_time_ago_human_readable(dt_str: &str) -> String {
+    let dt = DateTime::parse_from_rfc3339(dt_str)
+        .map(|dt| dt.with_timezone(&Utc));
+    if let Ok(dt) = dt {
+        let now = Utc::now();
+        let duration = now.signed_duration_since(dt);
+        let secs = duration.num_seconds();
+        if secs < 60 {
+            "just now".to_string()
+        } else if secs < 3600 {
+            format!("{} minutes ago", secs / 60)
+        } else if secs < 86400 {
+            format!("{} hours ago", secs / 3600)
+        } else {
+            let days = secs / 86400;
+            match days {
+            1 => "1 day ago".to_string(),
+            _ => format!("{} days ago", days),
+            }
+        }
+    } else {
+        "unknown".to_string()
     }
 }
 
