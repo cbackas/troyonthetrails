@@ -145,7 +145,6 @@ impl TrailCheckTemplate {
     }
 }
 
-
 async fn get_trail_html() -> anyhow::Result<String> {
     let url =
         std::env::var("TRAIL_DATA_URL").context("TRAIL_DATA_URL environment variable not found")?;
