@@ -1,7 +1,7 @@
 use serde::ser::SerializeStruct;
 
 use map_service::{DefaultColor, MapImage, TextAlignment, TextOptions};
-use shared_lib::structs::Activity;
+use shared_lib::strava_structs::Activity;
 
 struct OnTrailsNotification {
     beacon_url: String,

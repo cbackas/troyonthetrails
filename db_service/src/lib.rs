@@ -12,7 +12,7 @@ use serde::de;
 use tokio::sync::OnceCell;
 
 use crate::encryption::{decrypt, encrypt};
-use shared_lib::structs::TokenData;
+use shared_lib::strava_structs::TokenData;
 
 static DB_SERVICE: OnceCell<DbService> = OnceCell::const_new();
 

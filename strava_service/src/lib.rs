@@ -10,8 +10,8 @@ use tokio::{
     time::{sleep, Instant},
 };
 
-use shared_lib::env_utils;
-use shared_lib::structs::{Activity, StravaData, StravaDataCache};
+use shared_lib::strava_structs::{Activity, StravaData, StravaDataCache};
+use shared_lib::{env_utils, strava_structs::RideLocation};
 
 static CACHED_DATA: OnceCell<StravaDataCache> = OnceCell::const_new();
 
@@ -103,4 +103,50 @@ pub async fn get_activity(activity_id: i64) -> anyhow::Result<Activity> {
             resp.text().await.unwrap_or("Unknown error".to_string())
         ))
     }
+}
+
+pub async fn get_all_activities() -> anyhow::Result<Vec<Activity>> {
+    let resp = get_strava_data(
+        "https://www.strava.com/api/v3/athlete/activities?per_page=200".to_string(),
+    )
+    .await?;
+
+    match resp.status() {
+        reqwest::StatusCode::OK => {
+            let text = resp.text().await.context("Failed to get strava data")?;
+
+            let activities: Vec<Activity> =
+                serde_json::from_str(&text).context("Failed to deserialize JSON")?;
+
+            let activities = activities
+                .into_iter()
+                .filter(|activity| activity.type_field == "Ride")
+                .collect::<Vec<_>>();
+
+            Ok(activities)
+        }
+        _ => Err(anyhow::anyhow!(
+            "Received a non-success status code {}: {}",
+            resp.status(),
+            resp.text().await.unwrap_or("Unknown error".to_string())
+        )),
+    }
+}
+
+pub async fn get_ride_locations() -> anyhow::Result<Vec<RideLocation>> {
+    let activities = get_all_activities().await?;
+
+    let ride_locations = activities
+        .iter()
+        .filter(|activity| activity.type_field == "Ride")
+        .filter_map(|activity| match &activity.start_latlng {
+            Some(start_latlng) if start_latlng.len() == 2 => Some(RideLocation {
+                lat: start_latlng[0],
+                lng: start_latlng[1],
+            }),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    Ok(ride_locations)
 }
