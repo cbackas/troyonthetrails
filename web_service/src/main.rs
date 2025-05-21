@@ -26,8 +26,8 @@ use tracing_subscriber::{
 extern crate beacon_service;
 extern crate shared_lib;
 
-use shared_lib::env_utils;
 use shared_lib::utils;
+use shared_lib::{env_utils, trail_structs::TrailSystem};
 
 mod route_handlers;
 mod trail_lib;
@@ -36,7 +36,7 @@ mod trail_lib;
 pub struct AppState {
     // trail data
     trail_data_last_updated: Option<Instant>,
-    trail_data: Vec<route_handlers::trail_check::TrailSystem>,
+    trail_data: Vec<TrailSystem>,
 }
 type SharedAppState = Arc<Mutex<AppState>>;
 
