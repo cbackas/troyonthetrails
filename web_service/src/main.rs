@@ -30,6 +30,7 @@ use shared_lib::env_utils;
 use shared_lib::utils;
 
 mod route_handlers;
+mod trail_lib;
 
 #[derive(Default)]
 pub struct AppState {
