@@ -100,21 +100,13 @@ pub async fn handler(
         }
     }
 
-    let trail_data: Vec<TrailSystem> = match get_trail_html().await {
-        Ok(html) => match extract_trail_data(html) {
-            Ok(data) => data,
-            Err(err) => {
-                error!("Failed to extract trail data: {}", err);
-                vec![]
-            }
-        },
+    let trail_data = match crate::trail_lib::get_trail_data().await {
+        Ok(data) => sort_trail_data(data),
         Err(err) => {
-            error!("Failed to get trail HTML: {}", err);
-            vec![]
+            error!("Failed to get trail data: {}", err);
+            return super::html_template::HtmlTemplate(TrailCheckTemplate { trails: vec![] });
         }
     };
-
-    let trail_data = sort_trail_data(trail_data);
 
     let template = TrailCheckTemplate {
         trails: trail_data.clone(),
@@ -142,42 +134,6 @@ impl TrailCheckTemplate {
             Some(dt) => crate::utils::utc_to_time_ago_human_readable(dt),
             None => Default::default(),
         }
-    }
-}
-
-async fn get_trail_html() -> anyhow::Result<String> {
-    let url =
-        std::env::var("TRAIL_DATA_URL").context("TRAIL_DATA_URL environment variable not found")?;
-
-    let resp = reqwest::get(url)
-        .await
-        .context("Failed to get HTML from data source")?;
-    let html = resp.text().await.context("Couldn't find html body")?;
-
-    tracing::trace!("Fetched trail data from data source");
-
-    Ok(html)
-}
-
-fn extract_trail_data(html: String) -> anyhow::Result<Vec<TrailSystem>> {
-    let start_tag = "var trail_systems = ";
-    let end_tag = ";</script>";
-
-    let start = html
-        .find(start_tag)
-        .ok_or(anyhow::anyhow!("Start tag not found"))?
-        + start_tag.len();
-    let end = html[start..]
-        .find(end_tag)
-        .ok_or(anyhow::anyhow!("End tag not found"))?
-        + start;
-
-    let json = &html[start..end];
-
-    let trail_systems = serde_json::from_str(json);
-    match trail_systems {
-        Ok(trail_systems) => Ok(trail_systems),
-        Err(err) => Err(err.into()),
     }
 }
 
