@@ -1,6 +1,5 @@
 use anyhow::Context;
-
-use crate::route_handlers::trail_check::TrailSystem;
+use shared_lib::trail_structs::TrailSystem;
 
 pub async fn get_trail_data() -> anyhow::Result<Vec<TrailSystem>> {
     let html = get_trail_html().await?;
