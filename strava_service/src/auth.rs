@@ -2,7 +2,7 @@ use anyhow::Context;
 use tokio::sync::OnceCell;
 
 use db_service;
-use shared_lib::structs::{StravaTokenResponse, TokenData};
+use shared_lib::strava_structs::{StravaTokenResponse, TokenData};
 
 static TOKEN_DATA: OnceCell<Option<TokenData>> = OnceCell::const_new();
 pub async fn get_token() -> Option<TokenData> {

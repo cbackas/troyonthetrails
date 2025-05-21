@@ -1,3 +1,3 @@
 pub mod env_utils;
-pub mod structs;
+pub mod strava_structs;
 pub mod utils;

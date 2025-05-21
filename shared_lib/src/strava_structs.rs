@@ -56,6 +56,12 @@ pub struct StravaData {
     pub ytd_swim_totals: StravaTotals,
 }
 
+#[derive(Debug, Clone)]
+pub struct RideLocation {
+    pub lat: f64,
+    pub lng: f64,
+}
+
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Activity {
     pub id: i64,
@@ -74,6 +80,8 @@ pub struct Activity {
     pub max_speed: f64,
     pub elev_high: f64,
     pub elev_low: f64,
+    pub start_latlng: Option<Vec<f64>>,
+    pub end_latlng: Option<Vec<f64>>,
     #[serde(flatten)]
     other: serde_json::Value, // catch-all
 }
