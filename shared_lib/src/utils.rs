@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use geo::{Distance, Haversine};
 use serde_json::{self};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -105,4 +106,20 @@ where
         serde_json::Value::Object(map) => map.into_iter().collect(),
         _ => panic!("Expected a struct to serialize into a JSON object!"),
     }
+}
+
+pub fn haversine_distance(
+    a: impl TryInto<geo::Point>,
+    b: impl TryInto<geo::Point>,
+) -> anyhow::Result<f64> {
+    let a_point: geo::Point = match a.try_into() {
+        Ok(point) => point,
+        Err(_) => return Err(anyhow::anyhow!("Invalid coordinates for point A")),
+    };
+    let b_point: geo::Point = match b.try_into() {
+        Ok(point) => point,
+        Err(_) => return Err(anyhow::anyhow!("Invalid coordinates for point B")),
+    };
+
+    Ok(Haversine.distance(a_point, b_point))
 }
