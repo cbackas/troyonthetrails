@@ -74,8 +74,28 @@ pub struct Activity {
     pub max_speed: f64,
     pub elev_high: f64,
     pub elev_low: f64,
+    pub start_latlng: Option<Vec<f64>>,
+    pub end_latlng: Option<Vec<f64>>,
     #[serde(flatten)]
     other: serde_json::Value, // catch-all
+}
+
+impl TryFrom<Activity> for geo::Point {
+    type Error = &'static str;
+
+    fn try_from(activity: Activity) -> Result<Self, Self::Error> {
+        if let Some(start_latlng) = activity.start_latlng {
+            if start_latlng.len() == 2 {
+                let lat = start_latlng[0];
+                let lng = start_latlng[1];
+                if !(-90.0..=90.0).contains(&lat) || !(-180.0..=180.0).contains(&lng) {
+                    return Err("Invalid coordinates");
+                }
+                return Ok(geo::Point::new(start_latlng[1], start_latlng[0]));
+            }
+        }
+        Err("Invalid coordinates")
+    }
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]

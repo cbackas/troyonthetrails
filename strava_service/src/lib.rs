@@ -11,7 +11,7 @@ use tokio::{
 };
 
 use shared_lib::env_utils;
-use shared_lib::structs::{Activity, StravaData, StravaDataCache};
+use shared_lib::strava_structs::{Activity, StravaData, StravaDataCache};
 
 static CACHED_DATA: OnceCell<StravaDataCache> = OnceCell::const_new();
 
@@ -19,7 +19,9 @@ const MAX_RETRIES: u32 = 5;
 const INITIAL_BACKOFF: Duration = Duration::from_secs(1);
 
 async fn get_strava_data(url: String) -> anyhow::Result<Response> {
-    let strava_token = auth::get_token().await.expect("No token found");
+    let strava_token = auth::get_token()
+        .await
+        .context("Failed to get strava token")?;
     let client = reqwest::Client::new();
 
     for retry in 0..MAX_RETRIES {
@@ -104,5 +106,33 @@ pub async fn get_activity(activity_id: i64) -> anyhow::Result<Activity> {
             resp.status(),
             resp.text().await.unwrap_or("Unknown error".to_string())
         ))
+    }
+}
+
+pub async fn get_all_activities() -> anyhow::Result<Vec<Activity>> {
+    let resp = get_strava_data(
+        "https://www.strava.com/api/v3/athlete/activities?per_page=200".to_string(),
+    )
+    .await?;
+
+    match resp.status() {
+        reqwest::StatusCode::OK => {
+            let text = resp.text().await.context("Failed to get strava data")?;
+
+            let activities: Vec<Activity> =
+                serde_json::from_str(&text).context("Failed to deserialize JSON")?;
+
+            let activities = activities
+                .into_iter()
+                .filter(|activity| activity.type_field == "Ride")
+                .collect::<Vec<_>>();
+
+            Ok(activities)
+        }
+        _ => Err(anyhow::anyhow!(
+            "Received a non-success status code {}: {}",
+            resp.status(),
+            resp.text().await.unwrap_or("Unknown error".to_string())
+        )),
     }
 }
