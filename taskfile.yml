@@ -30,3 +30,6 @@ tasks:
   start-app:
     cmds:
       - flyctl scale count 1 -a troyonthetrails
+  test:
+    cmds:
+      - cargo test -p integration_tests
