@@ -12,3 +12,12 @@ pub async fn handler() -> impl axum::response::IntoResponse {
 struct TrailCheckTemplate {
     pub trails: Vec<TrailSystem>,
 }
+
+impl TrailCheckTemplate {
+    pub fn format_time_ago(&self, datetime_str: &Option<String>) -> String {
+        match datetime_str {
+            Some(dt) => crate::utils::utc_to_time_ago_human_readable(dt),
+            None => Default::default(),
+        }
+    }
+}
