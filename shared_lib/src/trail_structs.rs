@@ -73,3 +73,14 @@ pub struct TrailSystem {
     pub directions_url: Option<String>,
     pub predicted_status: Option<PredictedStatus>,
 }
+
+impl TryFrom<TrailSystem> for geo::Point {
+    type Error = &'static str;
+
+    fn try_from(trail: TrailSystem) -> Result<Self, Self::Error> {
+        if !(-90.0..=90.0).contains(&trail.lat) || !(-180.0..=180.0).contains(&trail.lng) {
+            return Err("Invalid coordinates");
+        }
+        Ok(geo::Point::new(trail.lng, trail.lat))
+    }
+}

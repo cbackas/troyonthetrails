@@ -10,8 +10,8 @@ use tokio::{
     time::{sleep, Instant},
 };
 
+use shared_lib::env_utils;
 use shared_lib::strava_structs::{Activity, StravaData, StravaDataCache};
-use shared_lib::{env_utils, strava_structs::RideLocation};
 
 static CACHED_DATA: OnceCell<StravaDataCache> = OnceCell::const_new();
 
@@ -19,7 +19,9 @@ const MAX_RETRIES: u32 = 5;
 const INITIAL_BACKOFF: Duration = Duration::from_secs(1);
 
 async fn get_strava_data(url: String) -> anyhow::Result<Response> {
-    let strava_token = auth::get_token().await.expect("No token found");
+    let strava_token = auth::get_token()
+        .await
+        .context("Failed to get strava token")?;
     let client = reqwest::Client::new();
 
     for retry in 0..MAX_RETRIES {
@@ -131,22 +133,4 @@ pub async fn get_all_activities() -> anyhow::Result<Vec<Activity>> {
             resp.text().await.unwrap_or("Unknown error".to_string())
         )),
     }
-}
-
-pub async fn get_ride_locations() -> anyhow::Result<Vec<RideLocation>> {
-    let activities = get_all_activities().await?;
-
-    let ride_locations = activities
-        .iter()
-        .filter(|activity| activity.type_field == "Ride")
-        .filter_map(|activity| match &activity.start_latlng {
-            Some(start_latlng) if start_latlng.len() == 2 => Some(RideLocation {
-                lat: start_latlng[0],
-                lng: start_latlng[1],
-            }),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-
-    Ok(ride_locations)
 }
