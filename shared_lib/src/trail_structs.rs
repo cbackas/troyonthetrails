@@ -71,6 +71,7 @@ pub struct TrailSystem {
     pub external_url: Option<String>,
     pub status_description: String,
     pub directions_url: Option<String>,
+    pub latest_status_update_at: Option<String>,
     pub predicted_status: Option<PredictedStatus>,
 }
 
