@@ -1,5 +1,13 @@
 [workspace]
-members = ["web_service", "shared_lib", "db_service", "strava_service", "beacon_service", "map_service"]
+members = [
+  "web_service",
+  "shared_lib",
+  "db_service",
+  "strava_service",
+  "trail_service",
+  "beacon_service",
+  "map_service",
+]
 resolver = "2"
 
 [workspace.dependencies]
@@ -8,6 +16,8 @@ db_service = { path = "./db_service" }
 strava_service = { path = "./strava_service" }
 beacon_service = { path = "./beacon_service" }
 map_service = { path = "./map_service" }
+web_service = { path = "./web_service" }
+trail_service = { path = "./trail_service" }
 anyhow = "1.0.97"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use anyhow::Context;
 use dotenv::dotenv;
 
@@ -10,7 +8,6 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use tokio::{sync::Mutex, time::Instant};
 use tower_http::compression::{
     predicate::{DefaultPredicate, NotForContentType, Predicate},
     CompressionLayer,
@@ -26,19 +23,10 @@ use tracing_subscriber::{
 extern crate beacon_service;
 extern crate shared_lib;
 
+use shared_lib::env_utils;
 use shared_lib::utils;
-use shared_lib::{env_utils, trail_structs::TrailSystem};
 
 mod route_handlers;
-mod trail_lib;
-
-#[derive(Default)]
-pub struct AppState {
-    // trail data
-    trail_data_last_updated: Option<Instant>,
-    trail_data: Vec<TrailSystem>,
-}
-type SharedAppState = Arc<Mutex<AppState>>;
 
 struct RequestUri(Uri);
 
@@ -77,7 +65,6 @@ async fn main() -> anyhow::Result<()> {
     axum::Server::bind(&addr)
         .serve(
             get_main_router()
-                .with_state(SharedAppState::default())
                 .layer(axum::middleware::from_fn(
                     |request: Request<_>, next: Next<_>| async move {
                         let uri = request.uri().clone();
@@ -119,7 +106,7 @@ async fn main() -> anyhow::Result<()> {
  * main router for the app, defines basic root routes including the webhook event route
  * also brings together the other routers
  **/
-fn get_main_router() -> Router<SharedAppState> {
+fn get_main_router() -> Router {
     tracing::debug!("initializing router(s) ...");
 
     let wh_secret = crate::env_utils::get_webhook_secret();
@@ -142,7 +129,7 @@ fn get_main_router() -> Router<SharedAppState> {
 /**
  * router for the static assets and such
 **/
-fn get_services_router() -> Router<SharedAppState> {
+fn get_services_router() -> Router {
     let assets_path = match std::env::current_dir() {
         Ok(path) => path,
         Err(_) => std::path::PathBuf::from("./"),
@@ -161,7 +148,7 @@ fn get_services_router() -> Router<SharedAppState> {
 /**
  * router for our api routes and the strava setup routes
  **/
-fn get_api_router() -> Router<SharedAppState> {
+fn get_api_router() -> Router {
     Router::new()
         .route("/trail-check", get(route_handlers::trail_check::handler))
         .route("/troy-check", get(route_handlers::troy_check::handler))
