@@ -1,0 +1,21 @@
+[package]
+name = "trail_service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+shared_lib = {workspace = true}
+strava_service = {workspace = true}
+anyhow = {workspace = true}
+tokio = { workspace = true }
+tracing = {workspace = true}
+reqwest = {workspace=true}
+serde_json = {workspace=true}
+# axum = "0.6.20"
+# tower = "0.4.13"
+# tower-http = { version = "0.4.4", features = ["trace", "fs", "compression-gzip"] }
+# askama = "0.12.1"
+# serde_urlencoded = "0.7.1"
+# humantime = "2.1.0"
+# url = "2.5.4"
+
