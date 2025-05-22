@@ -151,6 +151,10 @@ fn get_services_router() -> Router {
 fn get_api_router() -> Router {
     Router::new()
         .route("/trail-check", get(route_handlers::trail_check::handler))
+        .route(
+            "/trail-ride-counts",
+            get(route_handlers::trail_ride_counts::handler),
+        )
         .route("/troy-check", get(route_handlers::troy_check::handler))
         .nest(
             "/strava",
