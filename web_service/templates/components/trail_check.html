@@ -3,8 +3,14 @@
         <p class="text-slate-500 dark:text-slate-300">No trails found.</p>
     </div>
 {% else %}
+    <div hx-get="/api/trail-ride-counts"
+         hx-trigger="load"
+         hx-swap="none"
+         hx-target="#trail-status"
+         class="hidden"></div>
     {% for trail in trails %}
-        <div class="p-4 bg-white rounded shadow-xl max-w-sm w-full h-full relative">
+        <div data-trail-id="{{ trail.id }}"
+             class="p-4 bg-white rounded shadow-xl max-w-sm w-full h-full relative">
             <div class="flex items-center">
                 {% match trail.status %}
                 {% when TrailStatus::Closed %}
@@ -67,9 +73,12 @@
             {% else %}
                 <p class="ml-2 text-sm text-gray-500">{{ trail.status_description }}</p>
             {% endmatch %}
-            <span class="absolute bottom-2 right-2 text-xs text-gray-400">
+            <div class="absolute bottom-2 right-2 text-xs text-gray-400">
                 {{ self.format_time_ago(trail.latest_status_update_at) }}
-            </span>
+            </div>
+            <div id="count-{{ trail.id }}" class="mt-2">
+                <div class="htmx-indicator text-sm">Loading counts...</div>
+            </div>
         </div>
     </div>
 </div>
