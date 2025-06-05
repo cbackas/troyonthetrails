@@ -91,6 +91,14 @@ pub fn utc_to_time_ago_human_readable(dt_str: &str) -> String {
     }
 }
 
+pub fn count_to_times_human_readable(count: i32) -> String {
+    match count {
+        0 => "".to_string(),
+        1 => "1 time".to_string(),
+        _ => format!("{} times", count),
+    }
+}
+
 pub fn hash_string(string: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(string);
