@@ -12,6 +12,7 @@ static TRAIL_CACHE: OnceCell<TrailDataCache> = OnceCell::const_new();
 pub async fn get_data() -> TrailDataCache {
     let trail_data_cache = TRAIL_CACHE
         .get_or_init(|| async {
+            tracing::trace!("Fetching trail data for the first time");
             TrailDataCache {
                 trail_data: fetch_trail_data().await.unwrap_or_default(),
                 last_updated: Some(Instant::now()),
@@ -27,6 +28,7 @@ pub async fn get_data() -> TrailDataCache {
         }
     }
 
+    tracing::trace!("Trail data is stale, fetching new data");
     let trail_data = fetch_trail_data().await.unwrap_or_default();
     let is_empty = trail_data.is_empty();
     let mut cache = trail_data_cache.clone();

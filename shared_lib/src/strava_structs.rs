@@ -112,8 +112,3 @@ pub struct Map {
     pub summary_polyline: String,
     pub resource_state: i64,
 }
-
-pub struct StravaDataCache {
-    pub strava_athlete_stats: StravaData,
-    pub strava_athlete_stats_updated: Instant,
-}
