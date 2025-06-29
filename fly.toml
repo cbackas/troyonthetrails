@@ -18,7 +18,7 @@ primary_region = "ord"
 
 [env]
   HOST = "troyonthetrails.com"
-  RUST_LOG = "web_service=debug,shared_lib=debug"
+  RUST_LOG = "web_service=debug,map_service=debug,strava_service=debug,beacon_service=debug,shared_utils=debug,db_service=debug,trail_service=debug"
   PRIMARY_REGION = "ord"
 
 [checks]
