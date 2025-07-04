@@ -41,7 +41,7 @@ pub async fn get_db_service() -> &'static DbService {
     DB_SERVICE
         .get_or_init(|| async {
             let db = libsql::Builder::new_remote_replica(
-                env::var("LIBSQL_LOCAL_DB_PATH").unwrap_or("file:local_replica.db".to_string()),
+                env::var("LIBSQL_LOCAL_DB_PATH").unwrap_or("/tmp/local_replica.db".to_string()),
                 env::var("LIBSQL_CLIENT_URL").expect("Missing LIBSQL_CLIENT_URL"),
                 env::var("LIBSQL_CLIENT_TOKEN").expect("Missing LIBSQL_CLIENT_TOKEN"),
             )
