@@ -186,18 +186,24 @@ pub async fn get_troy_status() -> TroyStatus {
         .await;
 
     match result {
-        Ok(result) => TroyStatus {
-            is_on_trail: result.is_on_trail == 1,
-            beacon_url: result.beacon_url.clone(),
-            trail_status_updated: Some(
-                SystemTime::UNIX_EPOCH + Duration::from_secs(result.trail_status_updated),
-            ),
-        },
-        Err(_) => TroyStatus {
-            is_on_trail: false,
-            beacon_url: None,
-            trail_status_updated: None,
-        },
+        Ok(result) => {
+            tracing::trace!("Retrieved troy status from the DB: {:?}", result);
+            TroyStatus {
+                is_on_trail: result.is_on_trail == 1,
+                beacon_url: result.beacon_url.clone(),
+                trail_status_updated: Some(
+                    SystemTime::UNIX_EPOCH + Duration::from_secs(result.trail_status_updated),
+                ),
+            }
+        }
+        Err(e) => {
+            tracing::error!("Failed to get troy status from the DB: {:?}", e);
+            TroyStatus {
+                is_on_trail: false,
+                beacon_url: None,
+                trail_status_updated: None,
+            }
+        }
     }
 }
 
