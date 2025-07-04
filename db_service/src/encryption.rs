@@ -15,8 +15,8 @@ pub enum EncryptError {
 impl fmt::Display for EncryptError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            EncryptError::CocoonError(e) => write!(f, "Cocoon error: {:?}", e),
-            EncryptError::Utf8Error(e) => write!(f, "UTF8 error: {:?}", e),
+            EncryptError::CocoonError(e) => write!(f, "Cocoon error: {e:?}"),
+            EncryptError::Utf8Error(e) => write!(f, "UTF8 error: {e:?}"),
         }
     }
 }
