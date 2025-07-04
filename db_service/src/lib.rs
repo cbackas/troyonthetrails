@@ -51,9 +51,15 @@ pub async fn get_db_service() -> &'static DbService {
 
             tracing::debug!("Initialized db");
 
-            let _ = db.sync().await.expect("Failed to sync db");
-
-            tracing::trace!("Synced remote db to local disk");
+            match db.sync().await {
+                Ok(r) => {
+                    let frames_synced = r.frames_synced();
+                    tracing::debug!(
+                        "Synced remote db with local replica, frames synced: {frames_synced}"
+                    );
+                }
+                Err(e) => panic!("Failed to sync remote db: {e:?}"),
+            }
 
             DbService { db }
         })
