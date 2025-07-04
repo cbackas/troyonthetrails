@@ -15,7 +15,7 @@ pub async fn handler() -> impl axum::response::IntoResponse {
                 })
                 .collect::<Vec<&str>>()
                 .join(" ");
-            format!("{} ago", elapsed)
+            format!("{elapsed} ago")
         }
     };
 

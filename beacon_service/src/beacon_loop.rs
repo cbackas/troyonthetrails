@@ -40,6 +40,8 @@ async fn process_beacon() {
                 "Troy status indicates on the trails but no beacon url found, clearing troy status"
             );
                 db_service::set_troy_status(false).await;
+            } else {
+                tracing::debug!("No beacon url found, troy is not on the trails");
             }
             return;
         }

@@ -11,5 +11,5 @@ serde_json = {workspace = true}
 tokio = { workspace = true }
 tracing = {workspace = true}
 cocoon = "0.4.3"
-libsql = { git = "https://github.com/tursodatabase/libsql" }
+libsql = "0.9.11"
 

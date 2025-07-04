@@ -18,9 +18,9 @@ pub async fn handler() -> impl IntoResponse {
 
     let mut auth_url = String::with_capacity(200);
     auth_url.push_str("https://www.strava.com/oauth/authorize");
-    auth_url.push_str(&format!("?client_id={}", client_id));
+    auth_url.push_str(&format!("?client_id={client_id}"));
     auth_url.push_str("&response_type=code");
-    auth_url.push_str(&format!("&redirect_uri={}/api/strava/callback", host_uri));
+    auth_url.push_str(&format!("&redirect_uri={host_uri}/api/strava/callback"));
     auth_url.push_str("&approval_prompt=force");
     auth_url.push_str("&scope=read,activity:read");
 

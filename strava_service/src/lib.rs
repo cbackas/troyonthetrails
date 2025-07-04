@@ -58,8 +58,7 @@ pub async fn get_athlete_stats() -> anyhow::Result<StravaData> {
     tracing::trace!("Fetching new athlete stats");
     let strava_user_id = env_utils::get_strava_user_id().expect("No strava user id found");
     let resp = get_strava_data(format!(
-        "https://www.strava.com/api/v3/athletes/{}/stats",
-        strava_user_id
+        "https://www.strava.com/api/v3/athletes/{strava_user_id}/stats"
     ))
     .await?;
 
@@ -86,8 +85,7 @@ pub async fn get_athlete_stats() -> anyhow::Result<StravaData> {
 
 pub async fn get_activity(activity_id: i64) -> anyhow::Result<Activity> {
     let resp = get_strava_data(format!(
-        "https://www.strava.com/api/v3/activities/{}",
-        activity_id
+        "https://www.strava.com/api/v3/activities/{activity_id}"
     ))
     .await?;
 
