@@ -62,8 +62,15 @@ pub fn minutes_to_human_readable(seconds: i64) -> String {
     let mins = minutes % 60;
 
     match hours {
-        0 => format!("{mins} minute"),
-        _ => format!("{hours} hour, {mins} minute"),
+        0 if mins == 0 => "0 minutes".to_string(),
+        0 if mins == 1 => format!("{mins} minute"),
+        0 => format!("{mins} minutes"),
+
+        1 if mins == 0 => format!("{hours} hour"),
+        1 => format!("{hours} hour, {mins} minute"),
+
+        _ if mins == 0 => format!("{hours} hours"),
+        _ => format!("{hours} hours, {mins} minutes"),
     }
 }
 
@@ -95,7 +102,7 @@ pub fn count_to_times_human_readable(count: i32) -> String {
     match count {
         0 => "".to_string(),
         1 => "1 time".to_string(),
-        _ => format!("{} times", count),
+        _ => format!("{count} times"),
     }
 }
 
