@@ -11,15 +11,28 @@ use tokio::{
 };
 
 use shared_lib::env_utils;
-use shared_lib::structs::{Activity, StravaData, StravaDataCache};
+use shared_lib::strava_structs::{Activity, StravaData};
 
-static CACHED_DATA: OnceCell<StravaDataCache> = OnceCell::const_new();
+pub struct AtheleteStatsCache {
+    pub stats: StravaData,
+    pub updated: Instant,
+}
+static CACHE_ATHELETE_STATS: OnceCell<AtheleteStatsCache> = OnceCell::const_new();
+
+pub struct RidesCache {
+    pub rides: Vec<Activity>,
+    pub updated: Instant,
+}
+static CACHE_RIDES: OnceCell<RidesCache> = OnceCell::const_new();
 
 const MAX_RETRIES: u32 = 5;
 const INITIAL_BACKOFF: Duration = Duration::from_secs(1);
 
 async fn get_strava_data(url: String) -> anyhow::Result<Response> {
-    let strava_token = auth::get_token().await.expect("No token found");
+    let strava_token = auth::get_token()
+        .await
+        .context("Failed to get strava token")?;
+    tracing::info!("Using Strava token: {}", strava_token.access_token);
     let client = reqwest::Client::new();
 
     for retry in 0..MAX_RETRIES {
@@ -46,12 +59,12 @@ async fn get_strava_data(url: String) -> anyhow::Result<Response> {
 
 pub async fn get_athlete_stats() -> anyhow::Result<StravaData> {
     // return cached data if it's less than 5 minutes old
-    let cached_stats = CACHED_DATA.get();
+    let cached_stats = CACHE_ATHELETE_STATS.get();
     if let Some(cached_stats) = cached_stats {
         let now = Instant::now();
-        let time_since_last_update = now - cached_stats.strava_athlete_stats_updated;
+        let time_since_last_update = now - cached_stats.updated;
         if time_since_last_update.as_secs() < 60 * 5 {
-            return Ok(cached_stats.strava_athlete_stats.clone());
+            return Ok(cached_stats.stats.clone());
         }
     }
 
@@ -68,9 +81,9 @@ pub async fn get_athlete_stats() -> anyhow::Result<StravaData> {
         let strava_data: StravaData =
             serde_json::from_str(&text).context("Failed to deserialize JSON")?;
 
-        let _ = CACHED_DATA.set(StravaDataCache {
-            strava_athlete_stats: strava_data.clone(),
-            strava_athlete_stats_updated: Instant::now(),
+        let _ = CACHE_ATHELETE_STATS.set(AtheleteStatsCache {
+            stats: strava_data.clone(),
+            updated: Instant::now(),
         });
 
         Ok(strava_data)
@@ -102,5 +115,48 @@ pub async fn get_activity(activity_id: i64) -> anyhow::Result<Activity> {
             resp.status(),
             resp.text().await.unwrap_or("Unknown error".to_string())
         ))
+    }
+}
+
+pub async fn get_all_activities() -> anyhow::Result<Vec<Activity>> {
+    // return cached data if it's less than 5 minutes old
+    let cached_rides = CACHE_RIDES.get();
+    if let Some(cached_rides) = cached_rides {
+        let now = Instant::now();
+        let time_since_last_update = now - cached_rides.updated;
+        if time_since_last_update.as_secs() < 60 * 5 {
+            return Ok(cached_rides.rides.clone());
+        }
+    }
+
+    let resp = get_strava_data(
+        "https://www.strava.com/api/v3/athlete/activities?per_page=200".to_string(),
+    )
+    .await?;
+
+    match resp.status() {
+        reqwest::StatusCode::OK => {
+            let text = resp.text().await.context("Failed to get strava data")?;
+
+            let activities: Vec<Activity> =
+                serde_json::from_str(&text).context("Failed to deserialize JSON")?;
+
+            let activities = activities
+                .into_iter()
+                .filter(|activity| activity.type_field == "Ride")
+                .collect::<Vec<_>>();
+
+            let _ = CACHE_RIDES.set(RidesCache {
+                rides: activities.clone(),
+                updated: Instant::now(),
+            });
+
+            Ok(activities)
+        }
+        _ => Err(anyhow::anyhow!(
+            "Received a non-success status code {}: {}",
+            resp.status(),
+            resp.text().await.unwrap_or("Unknown error".to_string())
+        )),
     }
 }

@@ -11,3 +11,4 @@ tracing = { workspace = true }
 tokio = { workspace = true }
 chrono = { workspace = true }
 sha2 = "0.10.8"
+geo = "0.30.0"
