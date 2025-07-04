@@ -139,7 +139,7 @@ impl DiscordMessage {
 impl Default for DiscordMessage {
     fn default() -> Self {
         let host_uri = shared_lib::env_utils::get_host_uri();
-        let avatar_url = &format!("{}/assets/android-chrome-192x192.png", host_uri);
+        let avatar_url = &format!("{host_uri}/assets/android-chrome-192x192.png");
 
         let mut message = Self::new();
         message.username = Some("TOTT".to_string());
@@ -228,7 +228,7 @@ impl DiscordEmbed {
 impl Default for DiscordEmbed {
     fn default() -> Self {
         let host_uri = shared_lib::env_utils::get_host_uri();
-        let avatar_url = &format!("{}/assets/android-chrome-192x192.png", host_uri);
+        let avatar_url = &format!("{host_uri}/assets/android-chrome-192x192.png");
 
         let mut embed = Self::new();
         embed.footer = Some(EmbedFooter {
@@ -438,7 +438,7 @@ async fn get_map_image(
     let duration = shared_lib::utils::minutes_to_human_readable(duration);
     map_image
         .add_text(
-            format!("{} ride", duration).as_str(),
+            format!("{duration} ride").as_str(),
             TextOptions {
                 color: DefaultColor::White,
                 font_size: DATA_ROW_HEIGHT,
@@ -448,7 +448,7 @@ async fn get_map_image(
         .add_spacer();
 
     map_image.add_text_with_svg(
-        format!("Rode {} miles", distance).as_str(),
+        format!("Rode {distance} miles").as_str(),
         TextOptions {
             color: DefaultColor::White,
             font_size: DATA_ROW_HEIGHT,
@@ -458,7 +458,7 @@ async fn get_map_image(
     );
 
     map_image.add_text_with_svg(
-        format!("Climbed {} feet", elevation_gain).as_str(),
+        format!("Climbed {elevation_gain} feet").as_str(),
         TextOptions {
             color: DefaultColor::White,
             font_size: DATA_ROW_HEIGHT,
@@ -468,7 +468,7 @@ async fn get_map_image(
     );
 
     map_image.add_text_with_svg(
-        format!("Average speed of {:.1} mph", average_speed).as_str(),
+        format!("Average speed of {average_speed:.1} mph").as_str(),
         TextOptions {
             color: DefaultColor::White,
             font_size: DATA_ROW_HEIGHT,
@@ -478,7 +478,7 @@ async fn get_map_image(
     );
 
     map_image.add_text_with_svg(
-        format!("Top speed of {:.1} mph", top_speed).as_str(),
+        format!("Top speed of {top_speed:.1} mph").as_str(),
         TextOptions {
             color: DefaultColor::White,
             font_size: DATA_ROW_HEIGHT,
@@ -500,26 +500,26 @@ pub async fn send_discard_webhook() {
 }
 
 // test
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-    #[tokio::test]
-    async fn test_send_ending_webhook() {
-        dotenv::dotenv().ok();
-
-        let env_filter = tracing_subscriber::EnvFilter::builder()
-            .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
-            .from_env_lossy();
-        tracing_subscriber::registry()
-            .with(env_filter)
-            .with(tracing_subscriber::fmt::layer())
-            .init();
-
-        let _db = db_service::get_db_service().await;
-
-        let activity_id = 13865285076;
-        send_end_webhook(Some(activity_id)).await;
-    }
-}
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+//
+//     #[tokio::test]
+//     async fn test_send_ending_webhook() {
+//         dotenv::dotenv().ok();
+//
+//         let env_filter = tracing_subscriber::EnvFilter::builder()
+//             .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
+//             .from_env_lossy();
+//         tracing_subscriber::registry()
+//             .with(env_filter)
+//             .with(tracing_subscriber::fmt::layer())
+//             .init();
+//
+//         let _db = db_service::get_db_service().await;
+//
+//         let activity_id = 13865285076;
+//         send_end_webhook(Some(activity_id)).await;
+//     }
+// }

@@ -6,9 +6,9 @@ use crate::utils::hash_string;
 
 pub fn get_host_uri() -> String {
     match env::var("HOST") {
-        Ok(host) => format!("https://{}", host),
+        Ok(host) => format!("https://{host}"),
         _ => match env::var("FLY_APP_NAME") {
-            Ok(host) => format!("https://{}.fly.dev", host),
+            Ok(host) => format!("https://{host}.fly.dev"),
             _ => {
                 format!("http://localhost:{}", get_port())
             }

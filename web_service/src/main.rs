@@ -63,7 +63,7 @@ async fn main() -> anyhow::Result<()> {
     beacon_service::beacon_loop::start();
 
     let port = crate::env_utils::get_port();
-    let addr = format!("[::]:{}", port)
+    let addr = format!("[::]:{port}")
         .parse::<std::net::SocketAddr>()
         .expect("unable to parse address");
     let host_uri = crate::env_utils::get_host_uri();
@@ -122,7 +122,7 @@ fn get_main_router() -> Router<SharedAppState> {
     tracing::debug!("initializing router(s) ...");
 
     let wh_secret = crate::env_utils::get_webhook_secret();
-    let wh_path = format!("/wh/trail-event/{:#}", wh_secret);
+    let wh_path = format!("/wh/trail-event/{wh_secret:#}");
     tracing::info!("Webhook event route: {}", wh_path);
 
     let services_router = get_services_router();
@@ -148,8 +148,8 @@ fn get_services_router() -> Router<SharedAppState> {
     };
 
     let assets_path = format!("{}/assets", assets_path.to_str().unwrap());
-    let favicon_path = format!("{}/favicon.ico", assets_path);
-    let manifest_path = format!("{}/site.webmanifest", assets_path);
+    let favicon_path = format!("{assets_path}/favicon.ico");
+    let manifest_path = format!("{assets_path}/site.webmanifest");
 
     Router::new()
         .nest_service("/assets", ServeDir::new(assets_path))

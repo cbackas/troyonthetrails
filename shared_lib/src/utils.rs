@@ -52,7 +52,7 @@ pub fn duration_to_ms_string(duration: std::time::Duration) -> String {
     let milliseconds =
         duration.as_secs_f64() * 1000.0 + duration.subsec_nanos() as f64 / 1_000_000.0;
     // Format the milliseconds to a string with 2 decimal places and add 'ms' postfix
-    format!("{:.2}ms", milliseconds)
+    format!("{milliseconds:.2}ms")
 }
 
 pub fn minutes_to_human_readable(seconds: i64) -> String {
@@ -61,8 +61,8 @@ pub fn minutes_to_human_readable(seconds: i64) -> String {
     let mins = minutes % 60;
 
     match hours {
-        0 => format!("{} minute", mins),
-        _ => format!("{} hour, {} minute", hours, mins),
+        0 => format!("{mins} minute"),
+        _ => format!("{hours} hour, {mins} minute"),
     }
 }
 
@@ -82,7 +82,7 @@ pub fn utc_to_time_ago_human_readable(dt_str: &str) -> String {
             let days = secs / 86400;
             match days {
                 1 => "1 day ago".to_string(),
-                _ => format!("{} days ago", days),
+                _ => format!("{days} days ago"),
             }
         }
     } else {
