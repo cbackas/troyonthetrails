@@ -13,31 +13,26 @@ pub async fn handler() -> impl axum::response::IntoResponse {
             continue;
         }
 
+        let rides = match stats.rides {
+            1 => "1 time".to_string(),
+            _ => format!("{} times", stats.rides),
+        };
+
         let total_moving_time = match stats.total_moving_time {
             0 => "never".to_string(),
             elapsed => {
-                let hours = elapsed / 3600;
-                let minutes = (elapsed % 3600) / 60;
-                let seconds = elapsed % 60;
-
-                let mut time_parts = Vec::new();
-                if hours > 0 {
-                    time_parts.push(format!("{}h", hours));
+                let hours = (elapsed as f64 / 3600.0 * 2.0).round() / 2.0;
+                if hours.fract() == 0.0 {
+                    format!("{:.0}h", hours)
+                } else {
+                    format!("{:.1}h", hours)
                 }
-                if minutes > 0 {
-                    time_parts.push(format!("{}m", minutes));
-                }
-                if seconds > 0 {
-                    time_parts.push(format!("{}s", seconds));
-                }
-
-                time_parts.join(" ")
             }
         };
 
         let template = TrailStatsTemplate {
             id,
-            rides: format!("{} times", stats.rides),
+            rides,
             achievement_count: stats.achievement_count,
             total_moving_time,
         };
