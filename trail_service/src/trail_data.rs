@@ -1,6 +1,9 @@
 use anyhow::Context;
 use shared_lib::trail_structs::TrailSystem;
-use tokio::{sync::OnceCell, time::Instant};
+use std::sync::Arc;
+use std::sync::LazyLock;
+use tokio::sync::Mutex;
+use tokio::time::Instant;
 
 #[derive(Default, Clone)]
 pub struct TrailDataCache {
@@ -8,37 +11,41 @@ pub struct TrailDataCache {
     pub last_updated: Option<Instant>,
 }
 
-static TRAIL_CACHE: OnceCell<TrailDataCache> = OnceCell::const_new();
+static TRAIL_CACHE: LazyLock<Arc<Mutex<Option<TrailDataCache>>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(None)));
 pub async fn get_data() -> TrailDataCache {
-    let trail_data_cache = TRAIL_CACHE
-        .get_or_init(|| async {
-            tracing::trace!("Fetching trail data for the first time");
-            TrailDataCache {
-                trail_data: fetch_trail_data().await.unwrap_or_default(),
-                last_updated: Some(Instant::now()),
-            }
-        })
-        .await;
+    let mut guard = TRAIL_CACHE.lock().await;
 
-    if let Some(last_updated) = trail_data_cache.last_updated {
-        // if the trail data was updated less than 5 minutes ago, just use that
-        if last_updated.elapsed().as_secs() < 300 {
+    if let Some(ref data) = *guard {
+        if data
+            .last_updated
+            .as_ref()
+            .is_some_and(|t| t.elapsed().as_secs() < 300)
+        {
             tracing::trace!("Using cached trail data");
-            return trail_data_cache.clone();
+            return data.clone();
         }
+        tracing::trace!("Trail data is stale, fetching new data");
+        if let new_data @ Some(_) =
+            Some(fetch_trail_data().await.unwrap_or_default()).filter(|d| !d.is_empty())
+        {
+            let updated_data = TrailDataCache {
+                trail_data: new_data.unwrap(),
+                last_updated: Some(Instant::now()),
+            };
+            *guard = Some(updated_data.clone());
+            return updated_data;
+        }
+        // if new_data is empty, fall through to default below
     }
 
-    tracing::trace!("Trail data is stale, fetching new data");
-    let trail_data = fetch_trail_data().await.unwrap_or_default();
-    let is_empty = trail_data.is_empty();
-    let mut cache = trail_data_cache.clone();
-    cache.trail_data = trail_data;
-    if is_empty {
-        cache.last_updated = None;
-    } else {
-        cache.last_updated = Some(Instant::now());
-    }
-    cache
+    tracing::trace!("Fetching trail data for the first time or after empty fetch");
+    let default = TrailDataCache {
+        trail_data: fetch_trail_data().await.unwrap_or_default(),
+        last_updated: Some(Instant::now()),
+    };
+    *guard = Some(default.clone());
+    default
 }
 
 async fn fetch_trail_data() -> anyhow::Result<Vec<TrailSystem>> {
