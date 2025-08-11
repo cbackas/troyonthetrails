@@ -1,50 +1,40 @@
 use anyhow::Context;
-use tokio::sync::OnceCell;
 
 use db_service;
 use shared_lib::structs::{StravaTokenResponse, TokenData};
+use std::sync::Arc;
+use std::sync::LazyLock;
+use tokio::sync::Mutex;
 
-static TOKEN_DATA: OnceCell<Option<TokenData>> = OnceCell::const_new();
+static TOKEN_DATA: LazyLock<Arc<Mutex<Option<TokenData>>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(None)));
 pub async fn get_token() -> Option<TokenData> {
-    let token_data = TOKEN_DATA
-        .get_or_init(|| async {
-            match db_service::get_strava_auth().await {
-                Ok(data) => Some(data),
-                Err(e) => {
-                    tracing::warn!("No strava auth data found in db, {:?}", e);
-                    None
-                }
-            }
-        })
-        .await;
+    let mut guard = TOKEN_DATA.lock().await;
 
-    if let Some(data) = token_data {
+    if let Some(ref data) = *guard {
         if data.expires_at >= chrono::Utc::now().timestamp() as u64 {
             return Some(data.clone());
-        } else {
-            tracing::warn!("Strava token has expired");
         }
-    } else {
-        return None;
+        tracing::warn!("Strava token has expired");
+        if let Ok(new_token) = get_token_from_refresh(data.refresh_token.clone()).await {
+            *guard = Some(new_token.clone());
+            return Some(new_token);
+        } else {
+            tracing::error!("Failed to refresh strava token");
+            return None;
+        }
     }
 
-    let token_data = token_data.clone().expect("No token found");
-
-    let token_data = get_token_from_refresh(token_data.refresh_token)
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to refresh strava token: {}", e.to_string()));
-
-    let token_data = match token_data {
-        Ok(token_data) => Some(token_data),
+    match db_service::get_strava_auth().await {
+        Ok(data) => {
+            *guard = Some(data.clone());
+            Some(data)
+        }
         Err(e) => {
-            tracing::error!("{}", e);
+            tracing::warn!("No strava auth data found in db, {:?}", e);
             None
         }
-    };
-
-    let _ = TOKEN_DATA.set(token_data.clone());
-
-    token_data
+    }
 }
 
 pub async fn get_token_from_code(code: String) -> anyhow::Result<()> {
@@ -92,7 +82,10 @@ pub async fn get_token_from_code(code: String) -> anyhow::Result<()> {
 
         let strava_data: TokenData = strava_data.into();
 
-        let _ = TOKEN_DATA.set(Some(strava_data.clone()));
+        {
+            let mut guard = TOKEN_DATA.lock().await;
+            *guard = Some(strava_data.clone());
+        }
 
         db_service::set_strava_auth(strava_data).await;
 
