@@ -4,7 +4,9 @@ pub mod beacon;
 use std::time::Duration;
 
 use anyhow::Context;
+use reqwest::Url;
 use reqwest::{header, Response};
+use serde::de::DeserializeOwned;
 use std::sync::Arc;
 use std::sync::LazyLock;
 use tokio::sync::Mutex;
@@ -53,6 +55,56 @@ async fn get_strava_data(url: String) -> anyhow::Result<Response> {
     }
 
     Err(anyhow::anyhow!("Exceeded maximum retries"))
+}
+
+pub async fn get_paginated_strava_data<T>(base_url: String) -> anyhow::Result<Vec<T>>
+where
+    T: DeserializeOwned,
+{
+    let mut url = Url::parse(&base_url).context("Invalid base URL")?;
+
+    {
+        let mut query_pairs = url
+            .query_pairs()
+            .into_owned()
+            .collect::<Vec<(String, String)>>();
+        query_pairs.retain(|(k, _)| k != "page" && k != "per_page");
+        url.query_pairs_mut().clear().extend_pairs(query_pairs);
+    }
+
+    let mut all_results = Vec::new();
+    let per_page = 200;
+    let mut page = 1;
+
+    loop {
+        {
+            let mut qp = url
+                .query_pairs()
+                .into_owned()
+                .collect::<Vec<(String, String)>>();
+            qp.push(("per_page".into(), per_page.to_string()));
+            qp.push(("page".into(), page.to_string()));
+
+            let mut u = url.clone();
+            u.query_pairs_mut().clear().extend_pairs(qp);
+            url = u;
+        }
+
+        let resp = get_strava_data(url.to_string()).await?;
+        let items: Vec<T> = resp
+            .json()
+            .await
+            .context("Failed to deserialize Strava page")?;
+
+        if items.is_empty() {
+            break;
+        }
+
+        all_results.extend(items);
+        page += 1;
+    }
+
+    Ok(all_results)
 }
 
 static CACHE_ATHLETE_STATS: LazyLock<Arc<Mutex<Option<AthelteStatsCache>>>> =
@@ -135,37 +187,21 @@ pub async fn get_all_activities() -> anyhow::Result<Vec<Activity>> {
         }
     }
 
-    let resp = get_strava_data(
-        "https://www.strava.com/api/v3/athlete/activities?per_page=200".to_string(),
-    )
-    .await?;
+    let activities: Vec<Activity> =
+        get_paginated_strava_data("https://www.strava.com/api/v3/athlete/activities".to_string())
+            .await
+            .context("Failed to get paginated strava data")?
+            .into_iter()
+            .filter(|activity: &Activity| activity.type_field == "Ride")
+            .collect();
 
-    match resp.status() {
-        reqwest::StatusCode::OK => {
-            let text = resp.text().await.context("Failed to get strava data")?;
-
-            let activities: Vec<Activity> =
-                serde_json::from_str(&text).context("Failed to deserialize JSON")?;
-
-            let activities = activities
-                .into_iter()
-                .filter(|activity| activity.type_field == "Ride")
-                .collect::<Vec<_>>();
-
-            {
-                let mut guard = CACHE_RIDES.lock().await;
-                *guard = Some(RidesCache {
-                    rides: activities.clone(),
-                    updated: Instant::now(),
-                });
-            }
-
-            Ok(activities)
-        }
-        _ => Err(anyhow::anyhow!(
-            "Received a non-success status code {}: {}",
-            resp.status(),
-            resp.text().await.unwrap_or("Unknown error".to_string())
-        )),
+    {
+        let mut guard = CACHE_RIDES.lock().await;
+        *guard = Some(RidesCache {
+            rides: activities.clone(),
+            updated: Instant::now(),
+        });
     }
+
+    Ok(activities)
 }
