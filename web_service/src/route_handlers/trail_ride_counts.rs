@@ -23,9 +23,9 @@ pub async fn handler() -> impl axum::response::IntoResponse {
             elapsed => {
                 let hours = (elapsed as f64 / 3600.0 * 2.0).round() / 2.0;
                 if hours.fract() == 0.0 {
-                    format!("{:.0}h", hours)
+                    format!("{hours:.0}h")
                 } else {
-                    format!("{:.1}h", hours)
+                    format!("{hours:.1}h")
                 }
             }
         };
