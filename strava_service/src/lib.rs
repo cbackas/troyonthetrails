@@ -5,25 +5,23 @@ use std::time::Duration;
 
 use anyhow::Context;
 use reqwest::{header, Response};
-use tokio::{
-    sync::OnceCell,
-    time::{sleep, Instant},
-};
+use std::sync::Arc;
+use std::sync::LazyLock;
+use tokio::sync::Mutex;
+use tokio::time::{sleep, Instant};
 
 use shared_lib::env_utils;
 use shared_lib::strava_structs::{Activity, StravaData};
 
-pub struct AtheleteStatsCache {
+pub struct AthelteStatsCache {
     pub stats: StravaData,
     pub updated: Instant,
 }
-static CACHE_ATHELETE_STATS: OnceCell<AtheleteStatsCache> = OnceCell::const_new();
 
 pub struct RidesCache {
     pub rides: Vec<Activity>,
     pub updated: Instant,
 }
-static CACHE_RIDES: OnceCell<RidesCache> = OnceCell::const_new();
 
 const MAX_RETRIES: u32 = 5;
 const INITIAL_BACKOFF: Duration = Duration::from_secs(1);
@@ -57,14 +55,17 @@ async fn get_strava_data(url: String) -> anyhow::Result<Response> {
     Err(anyhow::anyhow!("Exceeded maximum retries"))
 }
 
+static CACHE_ATHLETE_STATS: LazyLock<Arc<Mutex<Option<AthelteStatsCache>>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(None)));
 pub async fn get_athlete_stats() -> anyhow::Result<StravaData> {
-    // return cached data if it's less than 5 minutes old
-    let cached_stats = CACHE_ATHELETE_STATS.get();
-    if let Some(cached_stats) = cached_stats {
-        let now = Instant::now();
-        let time_since_last_update = now - cached_stats.updated;
-        if time_since_last_update.as_secs() < 60 * 5 {
-            return Ok(cached_stats.stats.clone());
+    {
+        if let Some(cached_stats) = &*CACHE_ATHLETE_STATS.lock().await {
+            let now = Instant::now();
+            let time_since_last_update = now - cached_stats.updated;
+            if time_since_last_update.as_secs() < 60 * 5 {
+                tracing::trace!("Using cached athlete stats");
+                return Ok(cached_stats.stats.clone());
+            }
         }
     }
 
@@ -81,10 +82,13 @@ pub async fn get_athlete_stats() -> anyhow::Result<StravaData> {
         let strava_data: StravaData =
             serde_json::from_str(&text).context("Failed to deserialize JSON")?;
 
-        let _ = CACHE_ATHELETE_STATS.set(AtheleteStatsCache {
-            stats: strava_data.clone(),
-            updated: Instant::now(),
-        });
+        {
+            let mut guard = CACHE_ATHLETE_STATS.lock().await;
+            *guard = Some(AthelteStatsCache {
+                stats: strava_data.clone(),
+                updated: Instant::now(),
+            });
+        }
 
         Ok(strava_data)
     } else {
@@ -118,14 +122,16 @@ pub async fn get_activity(activity_id: i64) -> anyhow::Result<Activity> {
     }
 }
 
+static CACHE_RIDES: LazyLock<Arc<Mutex<Option<RidesCache>>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(None)));
 pub async fn get_all_activities() -> anyhow::Result<Vec<Activity>> {
-    // return cached data if it's less than 5 minutes old
-    let cached_rides = CACHE_RIDES.get();
-    if let Some(cached_rides) = cached_rides {
-        let now = Instant::now();
-        let time_since_last_update = now - cached_rides.updated;
-        if time_since_last_update.as_secs() < 60 * 5 {
-            return Ok(cached_rides.rides.clone());
+    {
+        if let Some(cached_rides) = &*CACHE_RIDES.lock().await {
+            let now = Instant::now();
+            let time_since_last_update = now - cached_rides.updated;
+            if time_since_last_update.as_secs() < 60 * 5 {
+                return Ok(cached_rides.rides.clone());
+            }
         }
     }
 
@@ -146,10 +152,13 @@ pub async fn get_all_activities() -> anyhow::Result<Vec<Activity>> {
                 .filter(|activity| activity.type_field == "Ride")
                 .collect::<Vec<_>>();
 
-            let _ = CACHE_RIDES.set(RidesCache {
-                rides: activities.clone(),
-                updated: Instant::now(),
-            });
+            {
+                let mut guard = CACHE_RIDES.lock().await;
+                *guard = Some(RidesCache {
+                    rides: activities.clone(),
+                    updated: Instant::now(),
+                });
+            }
 
             Ok(activities)
         }
