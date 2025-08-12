@@ -1,7 +1,7 @@
 use serde::ser::SerializeStruct;
 
 use map_service::{DefaultColor, MapImage, TextAlignment, TextOptions};
-use shared_lib::structs::Activity;
+use shared_lib::strava_structs::Activity;
 
 struct OnTrailsNotification {
     beacon_url: String,
@@ -498,28 +498,3 @@ pub async fn send_discard_webhook() {
     ))
     .await;
 }
-
-// test
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-//
-//     #[tokio::test]
-//     async fn test_send_ending_webhook() {
-//         dotenv::dotenv().ok();
-//
-//         let env_filter = tracing_subscriber::EnvFilter::builder()
-//             .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
-//             .from_env_lossy();
-//         tracing_subscriber::registry()
-//             .with(env_filter)
-//             .with(tracing_subscriber::fmt::layer())
-//             .init();
-//
-//         let _db = db_service::get_db_service().await;
-//
-//         let activity_id = 13865285076;
-//         send_end_webhook(Some(activity_id)).await;
-//     }
-// }

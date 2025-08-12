@@ -1,7 +1,7 @@
 use anyhow::Context;
 
 use db_service;
-use shared_lib::structs::{StravaTokenResponse, TokenData};
+use shared_lib::strava_structs::{StravaTokenResponse, TokenData};
 use std::sync::Arc;
 use std::sync::LazyLock;
 use tokio::sync::Mutex;

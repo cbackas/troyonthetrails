@@ -1,0 +1,14 @@
+[package]
+name = "trail_service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+shared_lib = {workspace = true}
+strava_service = {workspace = true}
+anyhow = {workspace = true}
+tokio = { workspace = true }
+tracing = {workspace = true}
+reqwest = {workspace=true}
+serde_json = {workspace=true}
+

@@ -4,22 +4,35 @@ pub mod beacon;
 use std::time::Duration;
 
 use anyhow::Context;
+use reqwest::Url;
 use reqwest::{header, Response};
-use tokio::{
-    sync::OnceCell,
-    time::{sleep, Instant},
-};
+use serde::de::DeserializeOwned;
+use std::sync::Arc;
+use std::sync::LazyLock;
+use tokio::sync::Mutex;
+use tokio::time::{sleep, Instant};
 
 use shared_lib::env_utils;
-use shared_lib::structs::{Activity, StravaData, StravaDataCache};
+use shared_lib::strava_structs::{Activity, StravaData};
 
-static CACHED_DATA: OnceCell<StravaDataCache> = OnceCell::const_new();
+pub struct AthelteStatsCache {
+    pub stats: StravaData,
+    pub updated: Instant,
+}
+
+pub struct RidesCache {
+    pub rides: Vec<Activity>,
+    pub updated: Instant,
+}
 
 const MAX_RETRIES: u32 = 5;
 const INITIAL_BACKOFF: Duration = Duration::from_secs(1);
 
 async fn get_strava_data(url: String) -> anyhow::Result<Response> {
-    let strava_token = auth::get_token().await.expect("No token found");
+    let strava_token = auth::get_token()
+        .await
+        .context("Failed to get strava token")?;
+    tracing::info!("Using Strava token: {}", strava_token.access_token);
     let client = reqwest::Client::new();
 
     for retry in 0..MAX_RETRIES {
@@ -44,14 +57,67 @@ async fn get_strava_data(url: String) -> anyhow::Result<Response> {
     Err(anyhow::anyhow!("Exceeded maximum retries"))
 }
 
+pub async fn get_paginated_strava_data<T>(base_url: String) -> anyhow::Result<Vec<T>>
+where
+    T: DeserializeOwned,
+{
+    let mut url = Url::parse(&base_url).context("Invalid base URL")?;
+
+    {
+        let mut query_pairs = url
+            .query_pairs()
+            .into_owned()
+            .collect::<Vec<(String, String)>>();
+        query_pairs.retain(|(k, _)| k != "page" && k != "per_page");
+        url.query_pairs_mut().clear().extend_pairs(query_pairs);
+    }
+
+    let mut all_results = Vec::new();
+    let per_page = 200;
+    let mut page = 1;
+
+    loop {
+        {
+            let mut qp = url
+                .query_pairs()
+                .into_owned()
+                .collect::<Vec<(String, String)>>();
+            qp.push(("per_page".into(), per_page.to_string()));
+            qp.push(("page".into(), page.to_string()));
+
+            let mut u = url.clone();
+            u.query_pairs_mut().clear().extend_pairs(qp);
+            url = u;
+        }
+
+        let resp = get_strava_data(url.to_string()).await?;
+        let items: Vec<T> = resp
+            .json()
+            .await
+            .context("Failed to deserialize Strava page")?;
+
+        if items.is_empty() {
+            break;
+        }
+
+        all_results.extend(items);
+        page += 1;
+    }
+
+    Ok(all_results)
+}
+
+static CACHE_ATHLETE_STATS: LazyLock<Arc<Mutex<Option<AthelteStatsCache>>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(None)));
 pub async fn get_athlete_stats() -> anyhow::Result<StravaData> {
-    // return cached data if it's less than 5 minutes old
-    let cached_stats = CACHED_DATA.get();
-    if let Some(cached_stats) = cached_stats {
-        let now = Instant::now();
-        let time_since_last_update = now - cached_stats.strava_athlete_stats_updated;
-        if time_since_last_update.as_secs() < 60 * 5 {
-            return Ok(cached_stats.strava_athlete_stats.clone());
+    {
+        if let Some(cached_stats) = &*CACHE_ATHLETE_STATS.lock().await {
+            let now = Instant::now();
+            let time_since_last_update = now - cached_stats.updated;
+            if time_since_last_update.as_secs() < 60 * 5 {
+                tracing::trace!("Using cached athlete stats");
+                return Ok(cached_stats.stats.clone());
+            }
         }
     }
 
@@ -68,10 +134,13 @@ pub async fn get_athlete_stats() -> anyhow::Result<StravaData> {
         let strava_data: StravaData =
             serde_json::from_str(&text).context("Failed to deserialize JSON")?;
 
-        let _ = CACHED_DATA.set(StravaDataCache {
-            strava_athlete_stats: strava_data.clone(),
-            strava_athlete_stats_updated: Instant::now(),
-        });
+        {
+            let mut guard = CACHE_ATHLETE_STATS.lock().await;
+            *guard = Some(AthelteStatsCache {
+                stats: strava_data.clone(),
+                updated: Instant::now(),
+            });
+        }
 
         Ok(strava_data)
     } else {
@@ -103,4 +172,36 @@ pub async fn get_activity(activity_id: i64) -> anyhow::Result<Activity> {
             resp.text().await.unwrap_or("Unknown error".to_string())
         ))
     }
+}
+
+static CACHE_RIDES: LazyLock<Arc<Mutex<Option<RidesCache>>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(None)));
+pub async fn get_all_activities() -> anyhow::Result<Vec<Activity>> {
+    {
+        if let Some(cached_rides) = &*CACHE_RIDES.lock().await {
+            let now = Instant::now();
+            let time_since_last_update = now - cached_rides.updated;
+            if time_since_last_update.as_secs() < 60 * 5 {
+                return Ok(cached_rides.rides.clone());
+            }
+        }
+    }
+
+    let activities: Vec<Activity> =
+        get_paginated_strava_data("https://www.strava.com/api/v3/athlete/activities".to_string())
+            .await
+            .context("Failed to get paginated strava data")?
+            .into_iter()
+            .filter(|activity: &Activity| activity.type_field == "Ride")
+            .collect();
+
+    {
+        let mut guard = CACHE_RIDES.lock().await;
+        *guard = Some(RidesCache {
+            rides: activities.clone(),
+            updated: Instant::now(),
+        });
+    }
+
+    Ok(activities)
 }

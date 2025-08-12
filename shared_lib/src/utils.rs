@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use geo::{Distance, Haversine};
 use serde_json::{self};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -61,8 +62,15 @@ pub fn minutes_to_human_readable(seconds: i64) -> String {
     let mins = minutes % 60;
 
     match hours {
-        0 => format!("{mins} minute"),
-        _ => format!("{hours} hour, {mins} minute"),
+        0 if mins == 0 => "0 minutes".to_string(),
+        0 if mins == 1 => format!("{mins} minute"),
+        0 => format!("{mins} minutes"),
+
+        1 if mins == 0 => format!("{hours} hour"),
+        1 => format!("{hours} hour, {mins} minute"),
+
+        _ if mins == 0 => format!("{hours} hours"),
+        _ => format!("{hours} hours, {mins} minutes"),
     }
 }
 
@@ -90,6 +98,14 @@ pub fn utc_to_time_ago_human_readable(dt_str: &str) -> String {
     }
 }
 
+pub fn count_to_times_human_readable(count: i32) -> String {
+    match count {
+        0 => "".to_string(),
+        1 => "1 time".to_string(),
+        _ => format!("{count} times"),
+    }
+}
+
 pub fn hash_string(string: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(string);
@@ -105,4 +121,20 @@ where
         serde_json::Value::Object(map) => map.into_iter().collect(),
         _ => panic!("Expected a struct to serialize into a JSON object!"),
     }
+}
+
+pub fn haversine_distance(
+    a: impl TryInto<geo::Point>,
+    b: impl TryInto<geo::Point>,
+) -> anyhow::Result<f64> {
+    let a_point: geo::Point = match a.try_into() {
+        Ok(point) => point,
+        Err(_) => return Err(anyhow::anyhow!("Invalid coordinates for point A")),
+    };
+    let b_point: geo::Point = match b.try_into() {
+        Ok(point) => point,
+        Err(_) => return Err(anyhow::anyhow!("Invalid coordinates for point B")),
+    };
+
+    Ok(Haversine.distance(a_point, b_point))
 }

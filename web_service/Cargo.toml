@@ -8,6 +8,7 @@ shared_lib = {workspace = true}
 db_service = {workspace = true}
 strava_service = {workspace = true}
 beacon_service = {workspace = true}
+trail_service = {workspace = true}
 anyhow = {workspace = true}
 serde = {workspace = true}
 serde_json = {workspace = true}
@@ -15,7 +16,7 @@ tokio = { workspace = true }
 tracing = {workspace = true}
 dotenv = {workspace = true}
 reqwest = {workspace=true}
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+tracing-subscriber = {workspace = true}
 axum = "0.6.20"
 tower = "0.4.13"
 tower-http = { version = "0.4.4", features = ["trace", "fs", "compression-gzip"] }
