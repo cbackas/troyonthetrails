@@ -73,6 +73,7 @@ pub struct TrailSystem {
     pub directions_url: Option<String>,
     pub latest_status_update_at: Option<String>,
     pub predicted_status: Option<PredictedStatus>,
+    pub stats: Option<TrailStatsDisplay>,
 }
 
 impl TryFrom<TrailSystem> for geo::Point {
@@ -83,5 +84,55 @@ impl TryFrom<TrailSystem> for geo::Point {
             return Err("Invalid coordinates");
         }
         Ok(geo::Point::new(trail.lng, trail.lat))
+    }
+}
+
+#[derive(Default, Debug, Clone, Copy, Eq)]
+pub struct TrailStats {
+    pub id: u64,
+    pub rides: i32,
+    pub achievement_count: i64,
+    pub total_moving_time: i64,
+}
+
+impl PartialEq for TrailStats {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.rides == other.rides
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct TrailStatsDisplay {
+    pub id: u64,
+    pub rides: String,
+    pub achievement_count: i64,
+    pub total_moving_time: String,
+}
+
+impl From<TrailStats> for TrailStatsDisplay {
+    fn from(stats: TrailStats) -> Self {
+        let rides = match stats.rides {
+            1 => "1 time".to_string(),
+            _ => format!("{} times", stats.rides),
+        };
+
+        let total_moving_time = match stats.total_moving_time {
+            0 => "never".to_string(),
+            elapsed => {
+                let hours = (elapsed as f64 / 3600.0 * 2.0).round() / 2.0;
+                if hours.fract() == 0.0 {
+                    format!("{hours:.0}h")
+                } else {
+                    format!("{hours:.1}h")
+                }
+            }
+        };
+
+        TrailStatsDisplay {
+            id: stats.id,
+            rides,
+            achievement_count: stats.achievement_count,
+            total_moving_time,
+        }
     }
 }

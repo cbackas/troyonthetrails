@@ -1,20 +1,10 @@
 use std::collections::HashMap;
 
-use shared_lib::{strava_structs::Activity, trail_structs::TrailSystem, utils};
-
-#[derive(Default, Debug, Clone, Copy, Eq)]
-pub struct TrailStats {
-    pub id: u64,
-    pub rides: i32,
-    pub achievement_count: i64,
-    pub total_moving_time: i64,
-}
-
-impl PartialEq for TrailStats {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.rides == other.rides
-    }
-}
+use shared_lib::{
+    strava_structs::Activity,
+    trail_structs::{TrailStats, TrailSystem},
+    utils,
+};
 
 pub fn calculate_stats(trails: Vec<TrailSystem>, rides: Vec<Activity>) -> HashMap<u64, TrailStats> {
     let counts = rides.iter().fold(HashMap::new(), |mut counts, ride| {
