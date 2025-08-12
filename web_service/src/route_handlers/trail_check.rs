@@ -2,7 +2,7 @@ use shared_lib::trail_structs::{TrailStatus, TrailSystem};
 
 pub async fn handler() -> impl axum::response::IntoResponse {
     let trail_data_cache = trail_service::trail_data::get_data().await;
-    let trails = match strava_service::get_cached_activities().await {
+    let trails = match strava_service::get_cached_activities(None).await {
         None => trail_data_cache.trail_data,
         Some(rides) => {
             let trail_stats = trail_service::ride_counts::calculate_stats(

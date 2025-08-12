@@ -177,20 +177,23 @@ pub async fn get_activity(activity_id: i64) -> anyhow::Result<Activity> {
 static CACHE_RIDES: LazyLock<Arc<Mutex<Option<RidesCache>>>> =
     LazyLock::new(|| Arc::new(Mutex::new(None)));
 
-pub async fn get_cached_activities() -> Option<Vec<Activity>> {
+pub async fn get_cached_activities(ttl: Option<u64>) -> Option<Vec<Activity>> {
     let guard = CACHE_RIDES.lock().await;
     if let Some(cached_rides) = &*guard {
-        let now = Instant::now();
-        let time_since_last_update = now - cached_rides.updated;
-        if time_since_last_update.as_secs() < 60 * 5 {
-            return Some(cached_rides.rides.clone());
+        if let Some(ttl) = ttl {
+            let now = Instant::now();
+            let time_since_last_update = now - cached_rides.updated;
+            if time_since_last_update.as_secs() < ttl {
+                return Some(cached_rides.rides.clone());
+            }
         }
+        return Some(cached_rides.rides.clone());
     }
     None
 }
 
 pub async fn get_all_activities() -> anyhow::Result<Vec<Activity>> {
-    if let Some(cached_rides) = get_cached_activities().await {
+    if let Some(cached_rides) = get_cached_activities(Some(60 * 5)).await {
         tracing::trace!("Using cached rides");
         return Ok(cached_rides);
     }
