@@ -82,8 +82,13 @@
                     </div>
                 </div>
             </div>
-            <div id="count-{{ trail.id }}"
-                 class="flex flex-row items-center justify-between mt-2 p-0 w-full max-h-[26px] scale-90"></div>
+            {% if let Some(stats) = trail.stats %}
+                {% let swap_oob = false %}
+                {% include "components/trail_stats.html" %}
+            {% else %}
+                <div id="count-{{ trail.id }}"
+                     class="flex flex-row items-center justify-between mt-2 p-0 w-full max-h-[26px] scale-90"></div>
+            {% endif %}
         </div>
     </div>
 {% endif %}
