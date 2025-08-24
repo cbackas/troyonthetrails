@@ -1,68 +1,70 @@
 {% extends "layouts/base.html" %}
 {% block title %}Troy on the Trails{% endblock %}
 {% block content %}
-    <div class="flex flex-col items-center space-y-4">
-        <div hx-get="/api/troy-check"
-             hx-swap="innerHtml"
-             hx-target="#troy-status"
-             hx-trigger="load, every 15s">
-            <div id="troy-status"
-                 class="text-center px-6 my-24 sm:px-6 lg:px-32 xl:px-48">
-                <h2 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-slate-50 rounded shadow animate-pulse">
-                    <div class="h-9 w-full rounded-full dark:bg-gray-700 animate-pulse"></div>
-                </h2>
+    <div class="relative min-h-screen">
+        <div class="flex flex-col items-center space-y-4 pb-10">
+            <div hx-get="/api/troy-check"
+                 hx-swap="innerHtml"
+                 hx-target="#troy-status"
+                 hx-trigger="load, every 15s">
+                <div id="troy-status"
+                     class="text-center px-6 my-24 sm:px-6 lg:px-32 xl:px-48">
+                    <h2 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-slate-50 rounded shadow animate-pulse">
+                        <div class="h-9 w-full rounded-full dark:bg-gray-700 animate-pulse"></div>
+                    </h2>
+                </div>
             </div>
-        </div>
-        {% if has_strava_token %}
-            <div hx-get="/api/strava/data"
+            {% if has_strava_token %}
+                <div hx-get="/api/strava/data"
+                     hx-swap="innerHtml"
+                     hx-trigger="load"
+                     class="sm:max-w-6xl max-w-[90%]">
+                    <dl class="grid grid-cols-2 xl:grid-cols-4 gap-2 md:gap-4 text-gray-900 dark:bg-gray-800 dark:text-white">
+                        <div class="flex flex-col items-center justify-center">
+                            <dt class="flex h-8 mb-2 text-2xl font-extrabold items-center justify-center">
+                                <div class="h-4 w-20 bg-gray-200 rounded-full dark:bg-gray-700 animate-pulse"></div>
+                            </dt>
+                            <dd class="text-sm text-gray-500 dark:text-gray-400">
+                                Rides
+                            </dd>
+                        </div>
+                        <div class="flex flex-col items-center justify-center">
+                            <dt class="flex h-8 mb-2 text-2xl font-extrabold items-center justify-center">
+                                <div class="h-4 w-20 bg-gray-200 rounded-full dark:bg-gray-700 animate-pulse"></div>
+                            </dt>
+                            <dd class="text-sm text-gray-500 dark:text-gray-400">
+                                Total Distance
+                            </dd>
+                        </div>
+                        <div class="flex flex-col items-center justify-center">
+                            <dt class="flex h-8 mb-2 text-2xl font-extrabold items-center justify-center">
+                                <div class="h-4 w-20 bg-gray-200 rounded-full dark:bg-gray-700 animate-pulse"></div>
+                            </dt>
+                            <dd class="text-sm text-gray-500 dark:text-gray-400">
+                                Total Elevation
+                            </dd>
+                        </div>
+                        <div class="flex flex-col items-center justify-center">
+                            <dt class="flex h-8 mb-2 text-2xl font-extrabold items-center justify-center">
+                                <div class="h-4 w-20 bg-gray-200 rounded-full dark:bg-gray-700 animate-pulse"></div>
+                            </dt>
+                            <dd class="text-sm text-gray-500 dark:text-gray-400">
+                                Longest Ride
+                            </dd>
+                        </div>
+                    </dl>
+                </div>
+            {% endif %}
+            <div hx-get="/api/trail-check"
                  hx-swap="innerHtml"
                  hx-trigger="load"
-                 class="sm:max-w-6xl max-w-[90%]">
-                <dl class="grid grid-cols-2 xl:grid-cols-4 gap-2 md:gap-4 text-gray-900 dark:bg-gray-800 dark:text-white">
-                    <div class="flex flex-col items-center justify-center">
-                        <dt class="flex h-8 mb-2 text-2xl font-extrabold items-center justify-center">
-                            <div class="h-4 w-20 bg-gray-200 rounded-full dark:bg-gray-700 animate-pulse"></div>
-                        </dt>
-                        <dd class="text-sm text-gray-500 dark:text-gray-400">
-                            Rides
-                        </dd>
-                    </div>
-                    <div class="flex flex-col items-center justify-center">
-                        <dt class="flex h-8 mb-2 text-2xl font-extrabold items-center justify-center">
-                            <div class="h-4 w-20 bg-gray-200 rounded-full dark:bg-gray-700 animate-pulse"></div>
-                        </dt>
-                        <dd class="text-sm text-gray-500 dark:text-gray-400">
-                            Total Distance
-                        </dd>
-                    </div>
-                    <div class="flex flex-col items-center justify-center">
-                        <dt class="flex h-8 mb-2 text-2xl font-extrabold items-center justify-center">
-                            <div class="h-4 w-20 bg-gray-200 rounded-full dark:bg-gray-700 animate-pulse"></div>
-                        </dt>
-                        <dd class="text-sm text-gray-500 dark:text-gray-400">
-                            Total Elevation
-                        </dd>
-                    </div>
-                    <div class="flex flex-col items-center justify-center">
-                        <dt class="flex h-8 mb-2 text-2xl font-extrabold items-center justify-center">
-                            <div class="h-4 w-20 bg-gray-200 rounded-full dark:bg-gray-700 animate-pulse"></div>
-                        </dt>
-                        <dd class="text-sm text-gray-500 dark:text-gray-400">
-                            Longest Ride
-                        </dd>
-                    </div>
-                </dl>
+                 hx-target="#trail-status"
+                 class="md:max-w-2xl xl:max-w-6xl w-[90%] py-6 md:py-6">
+                <h4 class="text-2xl font-bold tracking-tight sm:text-2xl py-2 text-gray-900 dark:text-slate-50">Trail Status</h4>
+                <div id="trail-status"
+                     class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 md:gap-4 place-items-center"></div>
             </div>
-        {% endif %}
-        <div hx-get="/api/trail-check"
-             hx-swap="innerHtml"
-             hx-trigger="load"
-             hx-target="#trail-status"
-             class="md:max-w-2xl xl:max-w-6xl w-[90%] py-6 md:py-6">
-            <h4 class="text-2xl font-bold tracking-tight sm:text-2xl py-2 text-gray-900 dark:text-slate-50">Trail Status</h4>
-            <div id="trail-status"
-                 class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 md:gap-4 place-items-center"></div>
         </div>
+        <div class="md:block absolute bottom-4 right-4 text-gray-600">Last updated: {{ last_updated }}</div>
     </div>
-    <div class="hidden md:block absolute bottom-4 right-4 text-gray-600">Last updated: {{ last_updated }}</div>
 {% endblock %}
