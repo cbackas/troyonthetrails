@@ -5,6 +5,7 @@ primary_region = "ord"
 
 [processes]
   web_service = "web_service"
+  beacon_service = "beacon_service"
 
 [build]
 
@@ -17,9 +18,8 @@ primary_region = "ord"
   min_machines_running = 1
 
 [env]
-  HOST = "troyonthetrails.com"
-  RUST_LOG = "web_service=debug,map_service=debug,strava_service=debug,beacon_service=debug,shared_utils=debug,db_service=debug,trail_service=debug"
-  PRIMARY_REGION = "ord"
+  host = "troyonthetrails.com"
+  rust_log = "web_service=debug,map_service=debug,strava_service=debug,beacon_service=debug,shared_utils=debug,db_service=debug,trail_service=debug"
 
 [checks]
   [checks.web_health]
