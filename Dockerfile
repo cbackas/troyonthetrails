@@ -22,6 +22,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/target/release/web_service /usr/local/bin/web_service
+COPY --from=build /app/target/release/beacon_service /usr/local/bin/beacon_service
 COPY --from=web_assets /app/assets /app/assets
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
