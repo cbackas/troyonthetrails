@@ -20,7 +20,6 @@ use tracing_subscriber::{
     filter::LevelFilter, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
 };
 
-extern crate beacon_service;
 extern crate shared_lib;
 
 use shared_lib::env_utils;
@@ -48,8 +47,6 @@ async fn main() -> anyhow::Result<()> {
         let db = db_service::get_db_service().await;
         db.init_tables().await;
     }
-
-    beacon_service::beacon_loop::start();
 
     let port = crate::env_utils::get_port();
     let addr = format!("[::]:{port}")

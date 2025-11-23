@@ -381,6 +381,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "db_service",
+ "dotenv",
  "map_service",
  "reqwest",
  "serde",
