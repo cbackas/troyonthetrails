@@ -7,6 +7,7 @@ members = [
   "trail_service",
   "beacon_service",
   "map_service",
+  "tiny_troy",
   "integration_tests"
 ]
 resolver = "2"
@@ -19,6 +20,7 @@ beacon_service = { path = "./beacon_service" }
 map_service = { path = "./map_service" }
 web_service = { path = "./web_service" }
 trail_service = { path = "./trail_service" }
+tiny_troy = { path = "./tiny_troy" }
 anyhow = "1.0.97"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }

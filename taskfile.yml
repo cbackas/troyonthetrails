@@ -8,8 +8,15 @@ tasks:
     cmds:
       - npm run tailwind:generate
   build:
+    deps: [build-tiny-troy]
     cmds:
       - cargo build
+  build-tiny-troy:
+    cmds:
+      - wasm-pack build tiny_troy --release --target web --out-dir ../tiny_troy/static
+  watch-tiny-troy:
+    cmds:
+      - cargo watch -w tiny_troy -s 'task build-tiny-troy'
   run-web:
     dir: 'web_service'
     cmds:
@@ -18,7 +25,9 @@ tasks:
   dev:
     aliases: [watch]
     cmds:
-      - cargo watch -s 'task run-web'
+      - |
+        cargo watch -w tiny_troy -s 'task build-tiny-troy' &
+        cargo watch -s 'task run-web'
     env:
       RUST_BACKTRACE: 1
   deploy:

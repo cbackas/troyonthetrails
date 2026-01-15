@@ -138,11 +138,16 @@ fn get_services_router() -> Router {
     let assets_path = format!("{}/assets", assets_path.to_str().unwrap());
     let favicon_path = format!("{assets_path}/favicon.ico");
     let manifest_path = format!("{assets_path}/site.webmanifest");
+    let tiny_troy_path = format!(
+        "{}/../tiny_troy/static",
+        assets_path.trim_end_matches("/assets")
+    );
 
     Router::new()
         .nest_service("/assets", ServeDir::new(assets_path))
         .nest_service("/favicon.ico", ServeFile::new(favicon_path))
         .nest_service("/site.webmanifest", ServeFile::new(manifest_path))
+        .nest_service("/tiny-troy", ServeDir::new(tiny_troy_path))
 }
 
 /**
