@@ -48,11 +48,90 @@ pub async fn get_data() -> TrailDataCache {
     default
 }
 
+struct TrailCollection(Vec<TrailSystem>);
+
+impl TrailCollection {
+    fn sort_by_distance(mut self) -> Self {
+        let static_lat = match std::env::var("HOME_LAT")
+            .map_err(|e| e.to_string())
+            .and_then(|s| s.parse::<f64>().map_err(|e| e.to_string()))
+        {
+            Ok(lat) => lat,
+            Err(err) => {
+                tracing::error!("Failed to parse HOME_LAT environment variable: {}", err);
+                return self;
+            }
+        };
+
+        let static_lng = match std::env::var("HOME_LNG")
+            .map_err(|e| e.to_string())
+            .and_then(|s| s.parse::<f64>().map_err(|e| e.to_string()))
+        {
+            Ok(lng) => lng,
+            Err(err) => {
+                tracing::error!("Failed to parse HOME_LNG environment variable: {}", err);
+                return self;
+            }
+        };
+
+        self.0.sort_by(|a, b| {
+            let distance_a =
+                ((a.lat - static_lat).powi(2) + (a.lng - static_lng).powi(2)).sqrt();
+            let distance_b =
+                ((b.lat - static_lat).powi(2) + (b.lng - static_lng).powi(2)).sqrt();
+            distance_a
+                .partial_cmp(&distance_b)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        self
+    }
+
+    fn filter_redundant_child_trails(mut self) -> Self {
+        let trails_snapshot: Vec<(String, f64, f64)> = self
+            .0
+            .iter()
+            .map(|t| (t.name.clone(), t.lat, t.lng))
+            .collect();
+
+        self.0.retain(|trail| {
+            let trail_words: Vec<&str> = trail.name.split_whitespace().collect();
+            !trails_snapshot.iter().any(|(other_name, other_lat, other_lng)| {
+                // A "parent" must have a strictly shorter name
+                if other_name.len() >= trail.name.len() || *other_name == trail.name {
+                    return false;
+                }
+                // Check shared 2+ word prefix (case-insensitive)
+                let other_words: Vec<&str> = other_name.split_whitespace().collect();
+                let shared = trail_words
+                    .iter()
+                    .zip(other_words.iter())
+                    .take_while(|(a, b)| a.eq_ignore_ascii_case(b))
+                    .count();
+                if shared < 2 {
+                    return false;
+                }
+                // Check within 2km using approximate degree-to-km conversion
+                let dlat = (trail.lat - other_lat) * 111.0;
+                let dlng = (trail.lng - other_lng) * 85.0;
+                dlat * dlat + dlng * dlng < 4.0
+            })
+        });
+        self
+    }
+
+    fn into_inner(self) -> Vec<TrailSystem> {
+        self.0
+    }
+}
+
 async fn fetch_trail_data() -> anyhow::Result<Vec<TrailSystem>> {
     let html = get_trail_html().await?;
-    let trail_systems = extract_trail_data(html)?;
-    let sorted_trail_systems = sort_trail_data(trail_systems);
-    Ok(sorted_trail_systems)
+    let trails = extract_trail_data(html)?
+        .sort_by_distance()
+        .filter_redundant_child_trails()
+        .into_inner();
+    Ok(trails)
 }
 
 async fn get_trail_html() -> anyhow::Result<String> {
@@ -69,7 +148,7 @@ async fn get_trail_html() -> anyhow::Result<String> {
     Ok(html)
 }
 
-fn extract_trail_data(html: String) -> anyhow::Result<Vec<TrailSystem>> {
+fn extract_trail_data(html: String) -> anyhow::Result<TrailCollection> {
     let start_tag = "var trail_systems = ";
     let end_tag = ";</script>";
 
@@ -84,44 +163,6 @@ fn extract_trail_data(html: String) -> anyhow::Result<Vec<TrailSystem>> {
 
     let json = &html[start..end];
 
-    let trail_systems = serde_json::from_str(json);
-    match trail_systems {
-        Ok(trail_systems) => Ok(trail_systems),
-        Err(err) => Err(err.into()),
-    }
-}
-
-fn sort_trail_data(trail_data: Vec<TrailSystem>) -> Vec<TrailSystem> {
-    let static_lat = match std::env::var("HOME_LAT")
-        .map_err(|e| e.to_string())
-        .and_then(|s| s.parse::<f64>().map_err(|e| e.to_string()))
-    {
-        Ok(lat) => lat,
-        Err(err) => {
-            tracing::error!("Failed to parse HOME_LAT environment variable: {}", err);
-            return trail_data;
-        }
-    };
-
-    let static_lng = match std::env::var("HOME_LNG")
-        .map_err(|e| e.to_string())
-        .and_then(|s| s.parse::<f64>().map_err(|e| e.to_string()))
-    {
-        Ok(lng) => lng,
-        Err(err) => {
-            tracing::error!("Failed to parse HOME_LNG environment variable: {}", err);
-            return trail_data;
-        }
-    };
-
-    let mut sorted_data = trail_data;
-    sorted_data.sort_by(|a, b| {
-        let distance_a = ((a.lat - static_lat).powi(2) + (a.lng - static_lng).powi(2)).sqrt();
-        let distance_b = ((b.lat - static_lat).powi(2) + (b.lng - static_lng).powi(2)).sqrt();
-        distance_a
-            .partial_cmp(&distance_b)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-
-    sorted_data
+    let trail_systems: Vec<TrailSystem> = serde_json::from_str(json)?;
+    Ok(TrailCollection(trail_systems))
 }
