@@ -28,12 +28,41 @@
             padding: 10px 20px;
             background: #f5f5f5;
             border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         h1 {
             margin: 0;
             color: #333;
             font-size: 1.5em;
+        }
+
+        .controls-panel {
+            display: flex;
+            gap: 15px;
+            font-size: 0.75em;
+        }
+
+        .slider-control {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .slider-control label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .slider-control input[type="range"] {
+            width: 100px;
+        }
+
+        .slider-control .value {
+            color: #999;
+            font-size: 0.9em;
         }
 
         .game-container {
@@ -76,6 +105,33 @@
 <body>
     <div class="header">
         <h1>Tiny Troy</h1>
+        <div class="controls-panel">
+            <div class="slider-control">
+                <label>Gravity</label>
+                <input type="range" id="gravity" min="0.2" max="3.0" step="0.1" value="1.0">
+                <span class="value" id="gravity-value">1.0</span>
+            </div>
+            <div class="slider-control">
+                <label>Thrust</label>
+                <input type="range" id="thrust" min="0.5" max="10" step="0.5" value="2.5">
+                <span class="value" id="thrust-value">2.5</span>
+            </div>
+            <div class="slider-control">
+                <label>Downhill</label>
+                <input type="range" id="downhill" min="0.1" max="3.0" step="0.1" value="0.3">
+                <span class="value" id="downhill-value">0.3</span>
+            </div>
+            <div class="slider-control">
+                <label>Launch</label>
+                <input type="range" id="launch" min="0.05" max="1.0" step="0.05" value="0.12">
+                <span class="value" id="launch-value">0.12</span>
+            </div>
+            <div class="slider-control">
+                <label>Slope</label>
+                <input type="range" id="slope" min="0.5" max="20.0" step="0.5" value="5.0">
+                <span class="value" id="slope-value">5.0</span>
+            </div>
+        </div>
     </div>
 
     <div class="game-container">
@@ -102,11 +158,38 @@
             // Create game instance
             let game = new Game();
 
+            // Wire up sliders
+            const setupSlider = (id, method) => {
+                const slider = document.getElementById(id);
+                const valueDisplay = document.getElementById(`${id}-value`);
+                slider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    valueDisplay.textContent = value.toFixed(2);
+                    game[method](value);
+                });
+            };
+
+            setupSlider('gravity', 'set_gravity');
+            setupSlider('thrust', 'set_thrust_force');
+            setupSlider('downhill', 'set_downhill_accel');
+            setupSlider('launch', 'set_launch_strength');
+            setupSlider('slope', 'set_slope_multiplier');
+
             // Input handling
             document.addEventListener('keydown', (e) => {
                 if (e.code === 'Space') {
                     e.preventDefault();
-                    game.set_space_pressed(true);
+                    if (game.is_game_over()) {
+                        game.reset();
+                    } else {
+                        game.set_space_pressed(true);
+                    }
+                } else if (e.code === 'KeyR') {
+                    e.preventDefault();
+                    game.reset();
+                } else if (e.code === 'Escape') {
+                    e.preventDefault();
+                    game.toggle_pause();
                 }
             });
 
@@ -117,14 +200,34 @@
                 }
             });
 
-            // Game loop (60fps)
-            function gameLoop() {
-                game.update();
+            // Fixed timestep game loop
+            // Physics runs at 120Hz, rendering at monitor refresh rate
+            const PHYSICS_TIMESTEP = 1000 / 120; // 120 updates per second
+            let lastTime = performance.now();
+            let accumulator = 0;
+
+            function gameLoop(currentTime) {
+                const deltaTime = currentTime - lastTime;
+                lastTime = currentTime;
+
+                // Add frame time to accumulator
+                accumulator += deltaTime;
+
+                // Run physics updates at fixed timestep
+                // Cap max updates per frame to prevent spiral of death
+                let updates = 0;
+                while (accumulator >= PHYSICS_TIMESTEP && updates < 5) {
+                    game.update();
+                    accumulator -= PHYSICS_TIMESTEP;
+                    updates++;
+                }
+
+                // Render once per frame
                 game.render();
                 requestAnimationFrame(gameLoop);
             }
 
-            gameLoop();
+            requestAnimationFrame(gameLoop);
         }
 
         run().catch(err => {
