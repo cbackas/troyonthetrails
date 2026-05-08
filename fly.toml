@@ -27,7 +27,5 @@ primary_region = "ord"
     interval = "30s"
     method = "get"
     path = "/healthcheck"
-    port = 8080
     timeout = "10s"
-    type = "http"
     processes = ["web_service"]
