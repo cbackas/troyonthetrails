@@ -16,16 +16,14 @@ primary_region = "ord"
   auto_start_machines = true
   min_machines_running = 1
 
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "10s"
+  path = "/healthcheck"
+
 [env]
   HOST = "troyonthetrails.com"
   RUST_LOG = "web_service=debug,map_service=debug,strava_service=debug,beacon_service=debug,shared_utils=debug,db_service=debug,trail_service=debug"
   PRIMARY_REGION = "ord"
-
-[checks]
-  [checks.web_health]
-    grace_period = "60s"
-    interval = "30s"
-    method = "get"
-    path = "/healthcheck"
-    timeout = "10s"
-    processes = ["web_service"]
