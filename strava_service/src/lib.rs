@@ -32,7 +32,6 @@ async fn get_strava_data(url: String) -> anyhow::Result<Response> {
     let strava_token = auth::get_token()
         .await
         .context("Failed to get strava token")?;
-    tracing::info!("Using Strava token: {}", strava_token.access_token);
     let client = reqwest::Client::new();
 
     for retry in 0..MAX_RETRIES {
