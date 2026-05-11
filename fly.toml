@@ -12,22 +12,18 @@ primary_region = "ord"
   processes = ["web_service"]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = false
   auto_start_machines = true
   min_machines_running = 1
+
+[[http_service.checks]]
+  grace_period = "30s"
+  interval = "30s"
+  method = "GET"
+  timeout = "10s"
+  path = "/healthcheck"
 
 [env]
   HOST = "troyonthetrails.com"
   RUST_LOG = "web_service=debug,map_service=debug,strava_service=debug,beacon_service=debug,shared_utils=debug,db_service=debug,trail_service=debug"
   PRIMARY_REGION = "ord"
-
-[checks]
-  [checks.web_health]
-    grace_period = "60s"
-    interval = "30s"
-    method = "get"
-    path = "/healthcheck"
-    port = 8080
-    timeout = "10s"
-    type = "http"
-    processes = ["web_service"]
