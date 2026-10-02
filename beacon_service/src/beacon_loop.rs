@@ -129,8 +129,11 @@ async fn process_beacon() {
         Status::UploadedLie => {
             if ride_time > (4 * 60) {
                 tracing::info!("Beacon data indicates activity was uploaded, but no activity id was found. It's been a while, clearing beacon url");
-                db_service::set_troy_status(false).await;
-                discord::send_end_webhook(None).await;
+                db_service::set_beacon_url(None).await;
+                if troy_status.is_on_trail {
+                    db_service::set_troy_status(false).await;
+                    discord::send_end_webhook(None).await;
+                }
             } else {
                 tracing::info!("Beacon data indicates activity was uploaded, but no activity id found, looping back again");
             }
