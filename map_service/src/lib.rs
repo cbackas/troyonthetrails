@@ -313,7 +313,7 @@ impl MapImage {
         };
 
         let mut img_data = pixmap.data().to_vec();
-        for pixel in img_data.chunks_exact_mut(4) {
+        for pixel in img_data.as_chunks_mut::<4>().0 {
             let a = pixel[3] as f32 / 255.0;
             if a > 0.0 {
                 pixel[0] = (pixel[0] as f32 / a).min(255.0) as u8;
