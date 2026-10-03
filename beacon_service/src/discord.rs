@@ -67,22 +67,18 @@ impl From<OffTrailsNotification> for DiscordEmbed {
         }
 
         embed
-            .field("Distance", &format!("{}mi", &webhook_data.distance), true)
+            .field("Distance", &format!("{}mi", webhook_data.distance), true)
             .field(
                 "Elevation Gain",
-                &format!("{}ft", &webhook_data.total_elevation_gain),
+                &format!("{}ft", webhook_data.total_elevation_gain),
                 true,
             )
             .field(
                 "Average Speed",
-                &format!("{}mph", &webhook_data.average_speed),
+                &format!("{}mph", webhook_data.average_speed),
                 true,
             )
-            .field(
-                "Top Speed",
-                &format!("{}mph", &webhook_data.max_speed),
-                true,
-            );
+            .field("Top Speed", &format!("{}mph", webhook_data.max_speed), true);
 
         embed
     }

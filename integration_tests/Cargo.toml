@@ -9,7 +9,6 @@ db_service = {workspace = true}
 strava_service = {workspace = true}
 beacon_service = {workspace = true}
 map_service = {workspace = true}
-web_service = {workspace = true}
 tracing-subscriber = {workspace = true}
 tracing = {workspace = true}
 dotenv = {workspace = true}
