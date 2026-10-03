@@ -16,36 +16,44 @@ static TRAIL_CACHE: LazyLock<Arc<Mutex<Option<TrailDataCache>>>> =
 pub async fn get_data() -> TrailDataCache {
     let mut guard = TRAIL_CACHE.lock().await;
 
-    if let Some(ref data) = *guard {
+    if let Some(data) = guard.as_ref() {
         if data
             .last_updated
-            .as_ref()
             .is_some_and(|t| t.elapsed().as_secs() < 300)
         {
             tracing::trace!("Using cached trail data");
             return data.clone();
         }
         tracing::trace!("Trail data is stale, fetching new data");
-        if let new_data @ Some(_) =
-            Some(fetch_trail_data().await.unwrap_or_default()).filter(|d| !d.is_empty())
-        {
-            let updated_data = TrailDataCache {
-                trail_data: new_data.unwrap(),
-                last_updated: Some(Instant::now()),
-            };
-            *guard = Some(updated_data.clone());
-            return updated_data;
-        }
-        // if new_data is empty, fall through to default below
+    } else {
+        tracing::trace!("Fetching trail data for the first time");
     }
 
-    tracing::trace!("Fetching trail data for the first time or after empty fetch");
-    let default = TrailDataCache {
-        trail_data: fetch_trail_data().await.unwrap_or_default(),
+    let fetched = fetch_trail_data().await.unwrap_or_default();
+
+    // Reset the staleness timer on every attempt so a struggling upstream is only
+    // hit once per window, but never let an empty fetch clobber good data.
+    let trail_data = if fetched.is_empty() {
+        match guard.as_ref().map(|d| &d.trail_data) {
+            Some(cached) if !cached.is_empty() => {
+                tracing::warn!("Trail data fetch was empty, keeping last good data");
+                cached.clone()
+            }
+            _ => {
+                tracing::warn!("Trail data fetch was empty, no good data to serve");
+                Vec::new()
+            }
+        }
+    } else {
+        fetched
+    };
+
+    let updated = TrailDataCache {
+        trail_data,
         last_updated: Some(Instant::now()),
     };
-    *guard = Some(default.clone());
-    default
+    *guard = Some(updated.clone());
+    updated
 }
 
 struct TrailCollection(Vec<TrailSystem>);
