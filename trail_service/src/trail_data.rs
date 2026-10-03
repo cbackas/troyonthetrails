@@ -75,10 +75,8 @@ impl TrailCollection {
         };
 
         self.0.sort_by(|a, b| {
-            let distance_a =
-                ((a.lat - static_lat).powi(2) + (a.lng - static_lng).powi(2)).sqrt();
-            let distance_b =
-                ((b.lat - static_lat).powi(2) + (b.lng - static_lng).powi(2)).sqrt();
+            let distance_a = ((a.lat - static_lat).powi(2) + (a.lng - static_lng).powi(2)).sqrt();
+            let distance_b = ((b.lat - static_lat).powi(2) + (b.lng - static_lng).powi(2)).sqrt();
             distance_a
                 .partial_cmp(&distance_b)
                 .unwrap_or(std::cmp::Ordering::Equal)
@@ -96,26 +94,28 @@ impl TrailCollection {
 
         self.0.retain(|trail| {
             let trail_words: Vec<&str> = trail.name.split_whitespace().collect();
-            !trails_snapshot.iter().any(|(other_name, other_lat, other_lng)| {
-                // A "parent" must have a strictly shorter name
-                if other_name.len() >= trail.name.len() || *other_name == trail.name {
-                    return false;
-                }
-                // Check shared 2+ word prefix (case-insensitive)
-                let other_words: Vec<&str> = other_name.split_whitespace().collect();
-                let shared = trail_words
-                    .iter()
-                    .zip(other_words.iter())
-                    .take_while(|(a, b)| a.eq_ignore_ascii_case(b))
-                    .count();
-                if shared < 2 {
-                    return false;
-                }
-                // Check within 2km using approximate degree-to-km conversion
-                let dlat = (trail.lat - other_lat) * 111.0;
-                let dlng = (trail.lng - other_lng) * 85.0;
-                dlat * dlat + dlng * dlng < 4.0
-            })
+            !trails_snapshot
+                .iter()
+                .any(|(other_name, other_lat, other_lng)| {
+                    // A "parent" must have a strictly shorter name
+                    if other_name.len() >= trail.name.len() || *other_name == trail.name {
+                        return false;
+                    }
+                    // Check shared 2+ word prefix (case-insensitive)
+                    let other_words: Vec<&str> = other_name.split_whitespace().collect();
+                    let shared = trail_words
+                        .iter()
+                        .zip(other_words.iter())
+                        .take_while(|(a, b)| a.eq_ignore_ascii_case(b))
+                        .count();
+                    if shared < 2 {
+                        return false;
+                    }
+                    // Check within 2km using approximate degree-to-km conversion
+                    let dlat = (trail.lat - other_lat) * 111.0;
+                    let dlng = (trail.lng - other_lng) * 85.0;
+                    dlat * dlat + dlng * dlng < 4.0
+                })
         });
         self
     }
