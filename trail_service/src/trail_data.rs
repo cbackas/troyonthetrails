@@ -138,7 +138,7 @@ impl TrailCollection {
                     }
                     // Within ~2km, using an approximate degree-to-km conversion.
                     let dlat = (trail.lat - parent_lat) * 111.0;
-                    let dlng = (trail.lng - parent_lng) * 85.0;
+                    let dlng = (trail.lng - parent_lng) * 111.0 * trail.lat.to_radians().cos();
                     dlat * dlat + dlng * dlng < 4.0
                 })
         });
