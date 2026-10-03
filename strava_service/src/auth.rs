@@ -31,7 +31,7 @@ pub async fn get_token() -> Option<TokenData> {
             Some(data)
         }
         Err(e) => {
-            tracing::warn!("No strava auth data found in db, {:?}", e);
+            tracing::warn!("No strava auth data found in db, {}", e);
             None
         }
     }
