@@ -86,34 +86,51 @@ impl TrailCollection {
     }
 
     fn filter_redundant_child_trails(mut self) -> Self {
-        let trails_snapshot: Vec<(String, f64, f64)> = self
+        // Drop a skills course when a nearby park shares its 2+ word name prefix.
+        const SKILLS_COURSE: &str = "skills course";
+        const MIN_SHARED_WORDS: usize = 2;
+
+        let is_skills_course = |name: &str| name.to_lowercase().contains(SKILLS_COURSE);
+
+        // Precompute the potential parents (everything that isn't a skills course).
+        let parents: Vec<(Vec<String>, f64, f64)> = self
             .0
             .iter()
-            .map(|t| (t.name.clone(), t.lat, t.lng))
+            .filter(|t| !is_skills_course(&t.name))
+            .map(|t| {
+                (
+                    t.name.split_whitespace().map(str::to_lowercase).collect(),
+                    t.lat,
+                    t.lng,
+                )
+            })
             .collect();
 
         self.0.retain(|trail| {
-            let trail_words: Vec<&str> = trail.name.split_whitespace().collect();
-            !trails_snapshot
+            if !is_skills_course(&trail.name) {
+                return true;
+            }
+            let words: Vec<String> = trail
+                .name
+                .split_whitespace()
+                .map(str::to_lowercase)
+                .collect();
+
+            // Keep it unless a nearby parent shares a 2+ word prefix.
+            !parents
                 .iter()
-                .any(|(other_name, other_lat, other_lng)| {
-                    // A "parent" must have a strictly shorter name
-                    if other_name.len() >= trail.name.len() || *other_name == trail.name {
-                        return false;
-                    }
-                    // Check shared 2+ word prefix (case-insensitive)
-                    let other_words: Vec<&str> = other_name.split_whitespace().collect();
-                    let shared = trail_words
+                .any(|(parent_words, parent_lat, parent_lng)| {
+                    let shared = words
                         .iter()
-                        .zip(other_words.iter())
-                        .take_while(|(a, b)| a.eq_ignore_ascii_case(b))
+                        .zip(parent_words)
+                        .take_while(|(a, b)| a == b)
                         .count();
-                    if shared < 2 {
+                    if shared < MIN_SHARED_WORDS {
                         return false;
                     }
-                    // Check within 2km using approximate degree-to-km conversion
-                    let dlat = (trail.lat - other_lat) * 111.0;
-                    let dlng = (trail.lng - other_lng) * 85.0;
+                    // Within ~2km, using an approximate degree-to-km conversion.
+                    let dlat = (trail.lat - parent_lat) * 111.0;
+                    let dlng = (trail.lng - parent_lng) * 85.0;
                     dlat * dlat + dlng * dlng < 4.0
                 })
         });
